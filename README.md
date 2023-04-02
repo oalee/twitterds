@@ -15,4 +15,3 @@ You can use Maté to install code modules from this list:
 mate install oalee/twitterds/twitter/data/scrape
 python -m twitter.data.scrape.download get
 ```
-

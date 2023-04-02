@@ -17,10 +17,13 @@ save_path = os.path.join(
 files = os.listdir(save_path)
 total = 0
 for file in files:
-    if file.endswith(".parquet"):
+    if file.endswith("live.parquet"):
         df = pd.read_parquet(os.path.join(save_path, file))
-        print(file, df.size)
-        total += df.size
+        # ipdb.set_trace()
+        # print(shapre(df)
+        # print(file, df.shape[0])
+        print(file, df.shape[0])
+        total += df.shape[0]
 
 print("Total tweets:", total)
 # df = pd.read_parquet(save_path)

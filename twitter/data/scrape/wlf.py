@@ -15,25 +15,6 @@ download_hashtags = [
     "رضا_شاه_روحت_شاد", "رضاشاه_روحت_شاد" , "جاویدشاه"
 ]
 
-
-def download_user(
-        user
-):
-
-    save_path = os.path.join(
-        env["save_path"], "user", f"{user}.parquet"
-    )
-
-    scraper = twitter.TwitterUserScraper(user)
-
-
-    df = pd.DataFrame()
-
-    in_memory = []
-
-    for i, tweet in enumerate(scraper.get_items()):
-        ipdb.set_trace()
-
 def download_tweets(
     query, start_date, end_date, mode=twitter.TwitterSearchScraperMode.TOP
 ):
@@ -104,7 +85,7 @@ wlf = ["زن زندگی آزادی"]
 
 for hashtags in wlf:
     download_increasing_months(hashtags, start_date, end_date)
-
+    
 
 
 

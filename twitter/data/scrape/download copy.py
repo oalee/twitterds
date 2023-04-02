@@ -15,31 +15,12 @@ download_hashtags = [
     "رضا_شاه_روحت_شاد", "رضاشاه_روحت_شاد" , "جاویدشاه"
 ]
 
-
-def download_user(
-        user
+def download_hashtag_tweets(
+    hashtag, start_date, end_date, mode=twitter.TwitterSearchScraperMode.TOP
 ):
 
     save_path = os.path.join(
-        env["save_path"], "user", f"{user}.parquet"
-    )
-
-    scraper = twitter.TwitterUserScraper(user)
-
-
-    df = pd.DataFrame()
-
-    in_memory = []
-
-    for i, tweet in enumerate(scraper.get_items()):
-        ipdb.set_trace()
-
-def download_tweets(
-    query, start_date, end_date, mode=twitter.TwitterSearchScraperMode.TOP
-):
-
-    save_path = os.path.join(
-        env["save_path"], "query", f"{query}_{start_date}_{end_date}_{mode.value}.parquet"
+        env["save_path"], "hashtags", f"{hashtag}_{start_date}_{end_date}_{mode.value}.parquet"
     )
 
     os.makedirs(os.path.dirname(save_path), exist_ok=True)
@@ -47,7 +28,7 @@ def download_tweets(
     df = pd.DataFrame()
 
     scraper = twitter.TwitterSearchScraper(
-        f"{query} since:{start_date} until:{end_date}", mode=mode
+        f"#{hashtag} since:{start_date} until:{end_date}", mode=mode
     )
 
     # scraper is a generator, so we can iterate over it
@@ -86,25 +67,11 @@ def download_increasing_months(hashtag, start_date, end_date):
         next_month = month + pd.DateOffset(months=1)
         fmt_month = month.strftime("%Y-%m-%d")
         fmt_next_month = next_month.strftime("%Y-%m-%d")
-        download_tweets(hashtag, fmt_month, fmt_next_month, mode=twitter.TwitterSearchScraperMode.TOP)
-        download_tweets(hashtag, fmt_month, fmt_next_month, mode=twitter.TwitterSearchScraperMode.LIVE)
+        download_hashtag_tweets(hashtag, fmt_month, fmt_next_month, mode=twitter.TwitterSearchScraperMode.TOP)
+        download_hashtag_tweets(hashtag, fmt_month, fmt_next_month, mode=twitter.TwitterSearchScraperMode.LIVE)
         month = next_month
 
-# # download_increasing_months(hashtags[3], start_date, end_date)
+# download_increasing_months(hashtags[3], start_date, end_date)
 
-# def download_search(query, start)
-
-
-# for hashtags in download_hashtags:
-#     download_increasing_months(hashtags, start_date, end_date)
-
-
-
-wlf = ["زن زندگی آزادی"]
-
-for hashtags in wlf:
+for hashtags in download_hashtags:
     download_increasing_months(hashtags, start_date, end_date)
-
-
-
-
