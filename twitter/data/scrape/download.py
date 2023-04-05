@@ -33,6 +33,7 @@ def download_user(
 
     for i, tweet in enumerate(scraper.get_items()):
         ipdb.set_trace()
+        
 
 def download_tweets(
     query, start_date, end_date, mode=twitter.TwitterSearchScraperMode.TOP

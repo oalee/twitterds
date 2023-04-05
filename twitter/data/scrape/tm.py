@@ -41,14 +41,29 @@ for dir in tqdm.tqdm(files):
     # ipdb.set_trace()
     # ipdb.set_trace()
 
+    try:
+        metadata = json.load(open(os.path.join(env["save_path"], "users", dir, "metadata.json")))
+        users += [metadata]
+    except:
+        metadata = None
+        if os.path.exists(os.path.join(env["save_path"], "users",dir, "metadata.json")):
+            
+            os.remove(os.path.join(env["save_path"], "users",dir, "metadata.json"))
+        continue
+
+
+    # error.json
+    if os.path.exists(os.path.join(env["save_path"], "users",dir, "error.json")):
+        ipdb.set_trace()
+        continue
     #   check if metadata exists
     if os.path.exists(os.path.join(env["save_path"], "users",dir, "metadata.json")):
         try:
             metadata = json.load(open(os.path.join(env["save_path"], "users", dir, "metadata.json")))
         except:
-            # remove file
-            os.remove(os.path.join(env["save_path"], "users",dir, "metadata.json"))
             metadata = None
+            
+            continue
 
     tweets_path = os.path.join(env["save_path"], "users", dir, "tweets.parquet")
     retweets_path = os.path.join(env["save_path"], "users", dir, "retweets.parquet")
@@ -65,6 +80,7 @@ for dir in tqdm.tqdm(files):
                 last_modified = os.path.getmtime(retweets_path)
                 if metadata["date"] >= last_modified:
                     # print("Skipping", dir, "because it is already up to date.")
+                    
                     users.append(metadata)
                     continue
 
@@ -74,11 +90,8 @@ for dir in tqdm.tqdm(files):
 
         try:
             df = pd.read_parquet(tweets_path)
+        
             user = df["user"][0]
-
-            # if type series, duplicates are there, so remove them
-            if type(user) == pd.core.series.Series:
-                user = user.drop_duplicates().iloc[0]
         except:
             # ipdb.set_trace()
             # probably empty
@@ -114,9 +127,9 @@ for dir in tqdm.tqdm(files):
         }
 
         metadata["user"]["created"] = metadata["user"]["created"].strftime(
-                "%Y-%m-%dT%H:%M:%S%z"
-            )
-        
+            "%Y-%m-%dT%H:%M:%S%z"
+        )
+
         # ipdb.set_trace()
 
         metadata = numpy_to_python(metadata)

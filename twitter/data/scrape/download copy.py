@@ -73,5 +73,11 @@ def download_increasing_months(hashtag, start_date, end_date):
 
 # download_increasing_months(hashtags[3], start_date, end_date)
 
+def download_search(query, start)
+
 for hashtags in download_hashtags:
     download_increasing_months(hashtags, start_date, end_date)
+
+
+
+
