@@ -138,13 +138,7 @@ for dir in tqdm.tqdm(files):
 
 # sum over tweets_count, retweets_count
 
-tweets_count = sum([user["tweets_count"] for user in users])
-retweets_count = sum([user["retweets_count"] for user in users])
 
-
-print("Users:", len(users))
-print("Tweets:", tweets_count)
-print("Retweets:", retweets_count)
 # df = pd.read_parquet(save_path)
 
 # ipdb.set_trace()
@@ -269,7 +263,7 @@ def save_plots_to_file(dataframe, output_directory):
     plot_variables = [
         ('tweets_count', 'Distribution of Tweets Count', 'tweets_count_distribution.png'),
         ('followersCount', 'Distribution of Followers Count', 'followers_count_distribution.png'),
-        ('friendsCount', 'Distribution of Friends Count (Following)', 'friends_count_distribution.png'),
+        ('friendsCount', 'Distribution of Friends Count', 'friends_count_distribution.png'),
         ('likes_count', 'Distribution of Likes Count', 'likes_count_distribution.png')
     ]
 
@@ -285,33 +279,41 @@ def save_plots_to_file(dataframe, output_directory):
     # Rank distribution
     dataframe['tweetrank'] = dataframe['tweets_count'] / dataframe['likes_count']
     # infinite values are caused by 0 likes
-    dataframe['tweetrank'] = dataframe['tweetrank'].replace([np.inf, -np.inf], -1)
+    dataframe['tweetrank'] = dataframe['tweetrank'].replace([np.inf, -np.inf], -10)
 
     plt.figure(figsize=(10, 6))
     plt.hist(dataframe['tweetrank'], bins=1000, log=True)
     plt.xlabel('Tweet Rank')
     plt.ylabel('Frequency')
-    plt.title('Distribution of Rank = Tweets Per Like')
+    plt.title('Distribution of Rank = total(Tweets) / total(Like) per user')
     plt.savefig(os.path.join(output_directory, 'tweet_rank_distribution.png'))
     plt.close()
     # x  = index
-    # y = value
-    # x = dataframe['tweetrank'].value_counts().index
-    # plt.figure(figsize=(10, 6))
-    # plt.scatter(dataframe[x_var], dataframe[y_var], alpha=0.3)
-    # plt.xlabel(x_var.replace('_', ' ').capitalize())
-    # plt.ylabel(y_var.replace('_', ' ').capitalize())
-    # plt.title(f'{x_var.replace("_", " ").capitalize()} vs {y_var.replace("_", " ").capitalize()}')
-    # plt.savefig(os.path.join(output_directory, file_name))
-    # plt.close()
-
 
 output_directory = "./plots/pre/"
 
 save_plots_to_file(merged_df, output_directory)
 
 # plot tweets counts, followers, following, likes
+
+# total tweets
+total_tweets = merged_df['tweets_count'].sum().item()
+total_users = merged_df.shape[0]
+print(f"Total users: {total_users}")
+print(f"Total tweets: {total_tweets}")
+
+
+# Total size in GB, folder path = env["save_path"] 
+folder_data = os.path.join(env['save_path'])
+# get size of this folder
+
+
 ipdb.set_trace()
 
+# tweets_count = sum([user["tweets_count"] for user in users])
+# retweets_count = sum([user["retweets_count"] for user in users])
 
 
+# print("Users:", len(users))
+# print("Tweets:", tweets_count)
+# print("Retweets:", retweets_count)
