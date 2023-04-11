@@ -126,6 +126,8 @@ for dir in tqdm.tqdm(files):
             "user": user,
         }
 
+    
+
         metadata["user"]["created"] = metadata["user"]["created"].strftime(
             "%Y-%m-%dT%H:%M:%S%z"
         )

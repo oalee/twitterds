@@ -9,7 +9,7 @@ end_date = "2023-05-01"
 env = yerbamate.Environment()
 
 
-query = "زن زندگی آزادی"
+query = "مهسا امینی"
 
 
 existing_find_users = os.listdir(os.path.join(env["save_path"], "users"))
@@ -23,7 +23,7 @@ def add_users(users):
 def add_user(username):
     if username not in existing_find_users:
         existing_find_users.append(username)
-        os.mkdir(os.path.join(env["save_path"], "users", username), exist_ok=True)
+        os.makedirs(os.path.join(env["save_path"], "users", username), exist_ok=True)
         print("Added user:", username)
 
 
