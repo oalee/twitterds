@@ -4,12 +4,12 @@ import ipdb
 import yerbamate, os, dataclasses
 
 
-start_date = "2022-08-01"
+start_date = "2022-9-01"
 end_date = "2023-05-01"
 env = yerbamate.Environment()
 
 
-query = "مهسا امینی"
+query = "بنغازی"
 
 
 existing_find_users = os.listdir(os.path.join(env["save_path"], "users"))
@@ -31,18 +31,30 @@ def download_tweets(
     query, start_date, end_date, mode=twitter.TwitterSearchScraperMode.TOP
 ):
 
+
+    # append _Number to the filename if it already exists
+    i = 1
+
     save_path = os.path.join(
         env["save_path"],
         "query",
         f"{query}_{start_date}_{end_date}_{mode.value}.parquet",
     )
 
+    while os.path.exists(save_path):
+        save_path = os.path.join(
+            env["save_path"],
+            "query",
+            f"{query}_{start_date}_{end_date}_{mode.value}_{i}.parquet",
+        )
+        i += 1
+
     os.makedirs(os.path.dirname(save_path), exist_ok=True)
 
     df = pd.DataFrame()
 
     scraper = twitter.TwitterSearchScraper(
-        f"{query} since:{start_date} until:{end_date}", mode=mode
+        f"{query} since:{start_date} until:{end_date} lang:fa", mode=mode
     )
 
     # scraper is a generator, so we can iterate over it
@@ -59,7 +71,7 @@ def download_tweets(
             in_memory.append(di)
             if i % 1000 == 0:
                 df = pd.concat([df, pd.DataFrame(in_memory)], ignore_index=True)
-                # df.to_parquet(save_path)
+                df.to_parquet(save_path)
                 in_memory = []
         except Exception as e:
             print(e)

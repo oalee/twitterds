@@ -13,7 +13,8 @@ import numpy as np
 def get_user(user_name):
 
     path = os.path.join(env["data"], "users", user_name)
-
+    df = None
+    rdf = None
     # check if tweets exist
     if os.path.exists(os.path.join(path, "tweets.parquet")):
         # check if not empty
@@ -63,7 +64,14 @@ def get_cleaned_tweets(user_name):
     # return cleaned tweets
     return user['cleanedContent']
 
-
+def get_user_df(user_name):
+    user = get_user(user_name)
+    if user is None:
+        return None
+    # Apply the cleaning function to the DataFrame
+    user['cleanedContent'] = user['rawContent'].apply(clean_text)
+    # return cleaned tweets
+    return user
 
 
 def numpy_to_python(obj):
@@ -93,6 +101,21 @@ cnt = 0
 errs = 0
 # handle interrupt
 
+def get_train_sentences():
+
+    # get all users, and their tweets
+    tweets = []
+    for dir in tqdm.tqdm(files):
+        df = get_user_df(dir)
+        try:
+            tweets.append(df['cleanedContent'].tolist())
+
+            if len(tweets) >= 100000:
+                break
+        except:
+            continue
+
+    return tweets
 
 def get_users():
 
@@ -163,7 +186,7 @@ def get_users():
 
 
                 user = df["user"][0]
-
+                likes = df["likeCount"].sum().item()
                 # if type series, duplicates are there, so remove them
                 if type(user) == pd.core.series.Series:
                     user = user.drop_duplicates().iloc[0]
@@ -191,9 +214,13 @@ def get_users():
 
             else:
                 retweets = 0
+            # try:
+                
+            # except:
+            #     ipdb.set_trace()
 
-            likes = df["likeCount"].sum().item()
-
+            if tweet_count == 0 and retweets == 0:
+                continue
             metadata = {
                 "tweets_count": tweet_count,
                 "retweets_count": retweets,

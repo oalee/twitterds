@@ -39,7 +39,12 @@ for uname in os.listdir(os.path.join(env["save_path"], folder)):
     tweet_path = os.path.join(env["save_path"], "users", uname, "tweets.parquet")
     rt_path = os.path.join(env["save_path"], "users", uname, "retweets.parquet")
     # ipdb.set_trace()
-
+    downloading_in_progress = os.path.join(
+        env["save_path"], "users", uname, "downloading_in_progress.txt")
+    
+    if os.path.exists(downloading_in_progress):
+        os.remove(downloading_in_progress)
+        print("Removed:", downloading_in_progress)
     if os.path.exists(rt_path):
 
         if os.stat(rt_path).st_size == 0:

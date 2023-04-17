@@ -119,6 +119,6 @@ users = get_users()
 
 # parse date such as month_day_timestamp from now
 # file_name =
-out_dir = "plots/pre/april_8_1"
+out_dir = "plots/pre/"
 
 save_plots_to_file(users, out_dir)

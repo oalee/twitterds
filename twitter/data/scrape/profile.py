@@ -13,147 +13,69 @@ env = yerbamate.Environment()
 # from .download import download_user
 
 
-def parse_tweet_users(tweet):
+def scrape_user(username):
+    scraper = twitter.TwitterUserScraper(username)
+    df = pd.DataFrame()
+    in_memory = []
 
-    # ipdb.set_trace()
-
-    uname = tweet.user["username"]
-
-    # make a folder with this username
-
-    save_path = os.path.join(env["save_path"], "users", uname)
-    if not os.path.exists(save_path):
-        os.makedirs(save_path)
-
-    tweet_path = os.path.join(
-        env["save_path"], "users", uname, "tweets.parquet")
-
-    if not os.path.exists(tweet_path):
-        # touch the file
-        open(tweet_path, "a").close()
-
-        df = pd.DataFrame()
-
-        scraper = twitter.TwitterUserScraper(uname)
-        # ipdb.set_trace()
-        in_memory = []
-
-        print("Downloading tweets for:", uname, "")
-
+    try:
         for i, tweet in enumerate(scraper.get_items()):
             try:
                 print(i, tweet.url)
+                di = dataclasses.asdict(tweet)
+                in_memory.append(di)
             except:
                 pass
-            di = dataclasses.asdict(tweet)
-            in_memory.append(di)
-
             # save every 1000 tweets
             if len(in_memory) > 1000:
-                # df = df.append(in_memory, ignore_index=True)
                 df = pd.concat([df, pd.DataFrame.from_records(in_memory)])
                 # df.to_parquet(tweet_path)
                 in_memory = []
                 # df = pd.DataFrame()
 
         df = pd.concat([df, pd.DataFrame.from_records(in_memory)])
-        # df = df.append(in_memory, ignore_index=True)
+    except Exception as e:
+        print(e)
+        traceback.print_exc()
+        pass
+    
+    return df
 
-        df.to_parquet(tweet_path)
-        # df.to_csv(os.path.join(env["save_path"], "users", uname, "tweets.csv"))
+def scrape_do(username):
+    scraper = twitter.TwitterProfileScraper(username)
 
-    else:
-        # if empty then return
-        if os.stat(tweet_path).st_size == 0:
-            print("Empty file:", tweet_path)
-            # save error
-            with open(
-                os.path.join(env["save_path"], "users",
-                             uname, "error.txt"), "a+"
-            ) as f:
-                # append error
+    rdf = pd.DataFrame()
+    in_memory = []
 
-                f.write("\nEmpty file:" + tweet_path)
-            return
 
-        df = pd.read_parquet(tweet_path)
-
-    # now, rw.parquet the file
-    rt_parquet_path = os.path.join(
-        env["save_path"], "users", uname, "retweets.parquet")
-    if not os.path.exists(rt_parquet_path):
-        scraper = twitter.TwitterProfileScraper(uname)
-
-        open(rt_parquet_path, "a").close()
-
-        print("Downloading retweets for:", uname, "")
-
-        rdf = pd.DataFrame()
-
-        in_memory = []
-
-        try:
-            for i, tweet in enumerate(scraper.get_items()):
-                try:
-                    print(i, tweet.url)
-                except:
-                    pass
+    try:
+        for i, tweet in enumerate(scraper.get_items()):
+            try:
+                print(i, tweet.url)
                 di = dataclasses.asdict(tweet)
                 in_memory.append(di)
+            except:
+                pass
+            # save every 1000 tweets
+            if len(in_memory) > 1000:
+                rdf = pd.concat(
+                    [rdf, pd.DataFrame.from_records(in_memory)], ignore_index=True)
+                # df.to_parquet(tweet_path)
+                in_memory = []
+                # df = pd.DataFrame()
 
-                # save every 1000 tweets
-                if len(in_memory) > 1000:
-                    # rdf = rdf.append(in_memory, ignore_index=True)
-                    rdf = pd.concat(
-                        [rdf, pd.DataFrame.from_records(in_memory)])
-                    # df.to_parquet(tweet_path)
-                    in_memory = []
-                    # df = pd.DataFrame()
+        rdf = pd.concat(
+            [rdf, pd.DataFrame.from_records(in_memory)], ignore_index=True)
+    
+    except Exception as e:
+        print(e)
+        traceback.print_exc()
+        pass
 
-            rdf = pd.concat([rdf, pd.DataFrame.from_records(in_memory)])
-
-            # rdf = rdf.append(in_memory, ignore_index=True)
-
-        except Exception as e:
-
-            with open(
-                os.path.join(env["save_path"], "users",
-                             uname, "error.txt"), "a+"
-            ) as f:
-
-                f.write(str(e))
-
-                stacktrace = traceback.format_exc()
-                f.write(stacktrace)
-
-            return
-        # ipdb.set_trace()
-
-        # first, find different that are in rdf but not df with the same url
-
-        # if not column url in rdf then continue
-        if "url" not in rdf.columns or "url" not in df.columns:
-            # ipdb.set_trace()
-            # save error
-            with open(
-                os.path.join(env["save_path"], "users",
-                             uname, "error.txt"), "w"
-            ) as f:
-                # append error
-
-                f.write(
-                    "url not in rdf or df, probably protected/private account, skipping"
-                )
-                # dump json of tweet
-                # f.write(json.dumps(tweet))
-
-                # print("DF, PATH", tweet_path)
-            return
-
-        new = rdf.loc[~rdf["url"].isin(df["url"])]
-
-        new.to_parquet(rt_parquet_path, index=False)
-
+    return rdf
+        
+        
+    
 
 def scrape_tweets(username):
 
@@ -170,9 +92,34 @@ def scrape_tweets(username):
     tweet_path = os.path.join(
         env["save_path"], "users", uname, "tweets.parquet")
 
+    rt_parquet_path = os.path.join(
+        env["save_path"], "users", uname, "retweets.parquet")
+
+    # touch a file for indicating downloading,
+
+    downloading_in_progress = os.path.join(
+        env["save_path"], "users", uname, "downloading_in_progress.txt")
+
+    if os.path.exists(downloading_in_progress):
+        print("Already downloading:", uname)
+        return
+
+    # if empty then delete
+    if os.path.exists(tweet_path):
+        if os.stat(tweet_path).st_size == 0:
+            os.remove(tweet_path)
+        # else:
+            # df = pd.read_parquet(tweet_path)
+            # # if emty then delete
+            # if df.empty:
+            #     os.remove(tweet_path)
+
     if not os.path.exists(tweet_path):
         # touch the file
         open(tweet_path, "a").close()
+
+        # touch downloading_in_progress
+        open(downloading_in_progress, "a").close()
 
         df = pd.DataFrame()
 
@@ -182,7 +129,7 @@ def scrape_tweets(username):
 
         print("Downloading tweets for:", uname, "")
 
-        ipdb.set_trace()
+        # ipdb.set_trace()
 
         for i, tweet in enumerate(scraper.get_items()):
             try:
@@ -190,7 +137,7 @@ def scrape_tweets(username):
                 di = dataclasses.asdict(tweet)
                 in_memory.append(di)
             except:
-                ipdb.set_trace()
+                # ipdb.set_trace()
                 pass
 
             # save every 1000 tweets
@@ -206,41 +153,35 @@ def scrape_tweets(username):
             df.to_parquet(tweet_path)
         # df.to_csv(os.path.join(env["save_path"], "users", uname, "tweets.csv"))
 
+        # if os.path.exists(downloading_in_progress): os.remove(downloading_in_progress)
+
     else:
-        # if empty then return
-        if os.stat(tweet_path).st_size == 0:
-            print("Empty file:", tweet_path)
-            # save error
-            # with open(
-            #     os.path.join(env["save_path"], "users",
-            #                  uname, "error.txt"), "w"
-            # ) as f:
-            #     # append error
 
-            #     f.write("\nEmpty file:" + tweet_path)
-            #     f.write("\nProbably a protected account, skipping")
-            #     f.write("------------------\n")
-            #     # remove the file
-            #     os.remove(tweet_path)
-
-            # return
         rt_parquet_path = os.path.join(
             env["save_path"], "users", uname, "retweets.parquet"
         )
         # if rt_parquet_path exists then return
         if os.path.exists(rt_parquet_path) and os.stat(rt_parquet_path).st_size > 0:
             return
+
         df = pd.read_parquet(tweet_path)
 
+        # if df is empty delete tweet_path and return
+        if df.empty and os.path.exists(tweet_path):
+            os.remove(tweet_path)
+
     # now, rw.parquet the file
-    rt_parquet_path = os.path.join(
-        env["save_path"], "users", uname, "retweets.parquet")
+
     if not os.path.exists(rt_parquet_path) or os.stat(rt_parquet_path).st_size == 0:
+        open(downloading_in_progress, "a").close()
+
         scraper = twitter.TwitterProfileScraper(uname)
 
         open(rt_parquet_path, "a").close()
 
         print("Downloading retweets for:", uname, "")
+
+        # downloading_in_progress = os.path.join(
 
         rdf = pd.DataFrame()
 
@@ -279,14 +220,23 @@ def scrape_tweets(username):
 
                 f.write("---------------------------\n")
 
-            return
+            if os.path.exists(downloading_in_progress):
+                os.remove(downloading_in_progress)
+            # os.remove(downloading_in_progress)
+            rdf = pd.concat(
+                [rdf, pd.DataFrame.from_records(in_memory)], ignore_index=True)
+
         # ipdb.set_trace()
 
         # first, find different that are in rdf but not df with the same url
 
+
         # if both df and rdf are empty then delete the file
         if df.empty:
-            os.remove(tweet_path)
+            if os.path.exists(tweet_path) and os.stat(tweet_path).st_size == 0:
+                os.remove(tweet_path)
+
+            # os.remove(tweet_path)
 
             if not rdf.empty:
                 rdf.to_parquet(rt_parquet_path, index=False)
@@ -315,9 +265,18 @@ def scrape_tweets(username):
                 # print("DF, PATH", tweet_path)
             return
 
-        new = rdf.loc[~rdf["url"].isin(df["url"])]
+    #     if uname == "Nasim__iran":
+    #         ipdb.set_trace()
+    # #
 
-        new.to_parquet(rt_parquet_path, index=False)
+        # new = rdf.loc[~rdf["url"].isin(df["url"])]
+
+        rdf.to_parquet(rt_parquet_path, index=False)
+
+
+        # if os.path.exists(downloading_in_progress):
+        #     os.remove(downloading_in_progress)
+        # delete the downloading_in_progress file
 
 
 # fodlers = ["hashtags", "query"]
@@ -365,6 +324,6 @@ def get_profiles_from_os_list():
 if __name__ == "__main__":
 
     if hasattr(env, "uname"):
-        scrape_tweets(env["uname"])
+        scrape_tweets(env.uname)
     else:
         get_profiles_from_os_list()
