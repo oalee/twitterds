@@ -101,19 +101,21 @@ cnt = 0
 errs = 0
 # handle interrupt
 
-def get_train_sentences():
+def get_train_sentences(size=1000000):
 
     # get all users, and their tweets
     tweets = []
     for dir in tqdm.tqdm(files):
         df = get_user_df(dir)
         try:
-            tweets.append(df['cleanedContent'].tolist())
+            tweets += df['cleanedContent'].tolist()
 
-            if len(tweets) >= 100000:
+            # ipdb.set_trace()
+            if len(tweets) >= size:
                 break
         except:
             continue
+        # print(len(tweets))
 
     return tweets
 

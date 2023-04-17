@@ -3,48 +3,48 @@ from ...data.loader.torch import get_train_dataloader
 from sentence_transformers import SentenceTransformer, LoggingHandler
 from sentence_transformers import models, util, datasets, evaluation, losses
 
-import yerbamate
-import os
+import yerbamate, ipdb, os, logging, tqdm
+
+from ...trainers.logger.tqdmlogger import TqdmLoggingHandler
+
+env = yerbamate.Environment()
 
 # Define your sentence transformer model using CLS pooling
-model_name = 'sentence-transformers/distiluse-base-multilingual-cased-v2'
+model_name = 'bert-base-multilingual-uncased'
 word_embedding_model = models.Transformer(model_name)
 pooling_model = models.Pooling(
     word_embedding_model.get_word_embedding_dimension(), 'cls')
 model = SentenceTransformer(modules=[word_embedding_model, pooling_model])
 
-# Define a list with sentences (1k - 100k sentences)
-# train_sentences = ["Your set of sentences",
-#                    "Model will automatically add the noise",
-#                    "And re-construct it",
-#                    "You should provide at least 1k sentences"]
-
-# Create the special denoising dataset that adds noise on-the-fly
-# train_dataset = datasets.DenoisingAutoEncoderDataset(train_sentences)
-
-# DataLoader to batch your data
-# DataLoader(train_dataset, batch_size=8, shuffle=True)
-train_dataloader = get_train_dataloader()
+train_dataloader = get_train_dataloader(size=100000,batch_size=4, shuffle=True)
 
 # Use the denoising auto-encoder loss
 train_loss = losses.DenoisingAutoEncoderLoss(
     model, decoder_name_or_path=model_name, tie_encoder_decoder=True)
 
+# logger = logging.getLogger(__name__)
+# logger.setLevel(logging.INFO)
+# logger.addHandler(logging.StreamHandler(tqdm.tqdm.write))
 
-env = yerbamate.Environment()
-
-
+# ipdb.set_trace()
 # Call the fit method
-
 if env.train:
     
     model.fit(
         train_objectives=[(train_dataloader, train_loss)],
         epochs=1,
-        weight_decay=0,
+        weight_decay=0.01,
         scheduler='constantlr',
-        optimizer_params={'lr': 3e-5},
-        show_progress_bar=True
+        optimizer_params={'lr': 3e-4},
+        show_progress_bar=True,
+        checkpoint_path=os.path.join(env["weights"], 'tsdae-model'),
+        # callback=LoggingHandler()
+        # logger=logger
+    
     )
 
-    model.save(os.path.join(env["results"], 'output/tsdae-model'))
+    try:
+
+        model.save(os.path.join(env["weights"], 'tsdae-model'))
+    except:
+        ipdb.set_trace()
