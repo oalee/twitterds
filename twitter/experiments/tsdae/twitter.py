@@ -1,4 +1,4 @@
-from ...data.loader.torch import get_train_dataloader
+from ...data.loader.torch import get_train_dataloader, get_train_ds_sentences
 
 from sentence_transformers import SentenceTransformer, LoggingHandler
 from sentence_transformers import models, util, datasets, evaluation, losses
@@ -15,36 +15,63 @@ word_embedding_model = models.Transformer(model_name)
 pooling_model = models.Pooling(
     word_embedding_model.get_word_embedding_dimension(), 'cls')
 model = SentenceTransformer(modules=[word_embedding_model, pooling_model])
+# model = model.half()
 
-train_dataloader = get_train_dataloader(size=100000,batch_size=4, shuffle=True)
+train_dataloader = get_train_ds_sentences(size=100000,batch_size=4, shuffle=True)
+
+#get_train_dataloader(size=100000,batch_size=4, shuffle=True)
+
+chkpt_save_steps = 500
+# load model if checkpoint exists
+
+if env.restart:
+    if os.path.exists(os.path.join(env["weights"], 'tsdae-model')):
+
+        #   check for latest checkpoint
+        
+        start = chkpt_save_steps
+        while True:
+            if os.path.exists(os.path.join(env["weights"], 'tsdae-model', f'{start}')):
+                start += chkpt_save_steps
+            else:
+                start -= chkpt_save_steps
+                break
+
+        last_chkpt = os.path.join(env["weights"], 'tsdae-model', f'{start}')
+        if os.path.exists(last_chkpt):
+            model = SentenceTransformer(last_chkpt, device='cuda')
+            # #   set start to next checkpoint
+            # start += chkpt_save_steps
+            print(f'Loaded model from {last_chkpt}')
+        
 
 # Use the denoising auto-encoder loss
 train_loss = losses.DenoisingAutoEncoderLoss(
     model, decoder_name_or_path=model_name, tie_encoder_decoder=True)
 
-# logger = logging.getLogger(__name__)
-# logger.setLevel(logging.INFO)
-# logger.addHandler(logging.StreamHandler(tqdm.tqdm.write))
+
+
 
 # ipdb.set_trace()
 # Call the fit method
-if env.train:
+# if env.train:
     
-    model.fit(
-        train_objectives=[(train_dataloader, train_loss)],
-        epochs=1,
-        weight_decay=0.01,
-        scheduler='constantlr',
-        optimizer_params={'lr': 3e-4},
-        show_progress_bar=True,
-        checkpoint_path=os.path.join(env["weights"], 'tsdae-model'),
-        # callback=LoggingHandler()
-        # logger=logger
-    
-    )
+model.fit(
+    train_objectives=[(train_dataloader, train_loss)],
+    epochs=1,
+    weight_decay=0.01,
+    scheduler='constantlr',
+    optimizer_params={'lr': 3e-4},
+    show_progress_bar=True,
+    checkpoint_path=os.path.join(env["weights"], 'tsdae-model'),
+    checkpoint_save_steps=chkpt_save_steps,
+    # callback=LoggingHandler()
+    # logger=logger
 
-    try:
+)
 
-        model.save(os.path.join(env["weights"], 'tsdae-model'))
-    except:
-        ipdb.set_trace()
+try:
+
+    model.save(os.path.join(env["weights"], 'tsdae-model'))
+except:
+    ipdb.set_trace()

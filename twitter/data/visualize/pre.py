@@ -6,6 +6,66 @@ import numpy as np
 from ..loader.prepro import get_users
 
 
+
+import os
+import numpy as np
+import matplotlib.pyplot as plt
+
+def display_plots(dataframe):
+    # Scatter plots
+    plot_variables = [
+        ('tweets_count', 'followers_count'),
+        ('tweets_count', 'friends_count'),
+        ('tweets_count', 'likes_count')
+    ]
+
+    for x_var, y_var in plot_variables:
+        plt.figure(figsize=(10, 6))
+        plt.scatter(dataframe[x_var], dataframe[y_var], alpha=0.3)
+        plt.xlabel(x_var.replace('_', ' ').capitalize())
+        plt.ylabel(y_var.replace('_', ' ').capitalize())
+        plt.title(f'{x_var.replace("_", " ").capitalize()} vs {y_var.replace("_", " ").capitalize()}')
+        plt.show()
+
+    # Distribution plots
+    plot_variables = [
+        ('tweets_count', 'Distribution of Tweets Count'),
+        ('followers_count', 'Distribution of Followers Count'),
+        ('friends_count', 'Distribution of Friends Count'),
+        ('likes_count', 'Distribution of Likes Count')
+    ]
+
+    for var, title in plot_variables:
+        plt.figure(figsize=(10, 6))
+        plt.hist(dataframe[var], bins=70, log=True)
+        plt.xlabel(var.replace('_', ' ').capitalize())
+        plt.ylabel('Frequency')
+        plt.title(title)
+        plt.show()
+
+    # Rank distribution
+    dataframe['tweetrank'] = dataframe['likes_count'] / dataframe['tweets_count']
+    dataframe['tweetrank'] = dataframe['tweetrank'].replace([np.inf, -np.inf], -10)
+
+    plt.figure(figsize=(10, 6))
+    plt.hist(dataframe['tweetrank'], bins=1000, log=True)
+    plt.xlabel('Tweet Rank')
+    plt.ylabel('Frequency')
+    plt.title('Distribution of Rank Index=Like/Tweet')
+    plt.show()
+
+    # Define rtweetrank
+    dataframe['rtweetrank'] = dataframe['retweets_count'] / dataframe['tweets_count']
+    dataframe['rtweetrank'] = dataframe['rtweetrank'].replace([np.inf, -np.inf], -10)
+    
+    plt.figure(figsize=(10, 6))
+    plt.hist(dataframe['rtweetrank'], bins=1000, log=True)
+    plt.xlabel('Retweet Rank')
+    plt.ylabel('Frequency')
+    plt.title('Distribution of ReTweetRank Index=Retweet/Tweet')
+    plt.show()
+
+
 def save_plots_to_file(dataframe, output_directory):
     if not os.path.exists(output_directory):
         os.makedirs(output_directory)
@@ -57,9 +117,23 @@ def save_plots_to_file(dataframe, output_directory):
     plt.hist(dataframe['tweetrank'], bins=1000, log=True)
     plt.xlabel('Tweet Rank')
     plt.ylabel('Frequency')
-    plt.title('Distribution of Rank Index= Like/Tweet ')
+    plt.title('Distribution of Rank Index=Like/Tweet ')
     plt.savefig(os.path.join(output_directory, 'tweet_rank_distribution.png'))
     plt.close()
+
+
+
+    # define rtweetrank
+    dataframe['rtweetrank'] = dataframe['retweets_count'] /   dataframe['tweets_count']
+    # infinite values are caused by 0 likes
+    dataframe['rtweetrank'] = dataframe['rtweetrank'].replace(
+        [np.inf, -np.inf], -10)
+    
+    plt.figure(figsize=(10, 6))
+    plt.hist(dataframe['rtweetrank'], bins=1000, log=True)
+    plt.xlabel('Retweet Rank')
+    plt.ylabel('Frequency')
+    plt.title('Distribution of ReTweetRank Index=Retweet/Tweet ')
 
 
 def plot_users(dataframe):

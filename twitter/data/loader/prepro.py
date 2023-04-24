@@ -1,4 +1,5 @@
 import json
+import random
 import sys
 import pandas as pd
 import ipdb
@@ -8,6 +9,8 @@ import tqdm
 import re
 
 import numpy as np
+
+import subprocess
 
 
 def get_user(user_name):
@@ -101,6 +104,78 @@ cnt = 0
 errs = 0
 # handle interrupt
 
+from pathlib import Path
+
+data_path = env['data']
+
+
+def get_directory_size_with_du(path=data_path):
+    cmd = ["du", "-sh", path]
+    output = subprocess.check_output(cmd)
+    size = output.strip().split()[0].decode('utf-8')
+    return size
+
+user_dir = Path(env["data"]) / "users"
+
+import hashlib
+
+def get_size(path):
+    return os.path.getsize(path)
+
+
+def hash_username(username, algorithm="sha1"):
+    hash_obj = hashlib.new(algorithm)
+    hash_obj.update(username.encode("utf-8"))
+    return hash_obj.hexdigest()[:6]
+
+
+def visualize_random_users(directory, num_users=10):
+    all_users = [user for user in os.listdir(directory) if os.path.isdir(os.path.join(directory, user))]
+    random_users = random.sample(all_users, min(num_users, len(all_users)))
+
+    for user in random_users:
+        hashed_user = hash_username(user)
+        print(f"User: {hashed_user}")
+
+        tweets_file = directory / user / "tweets.parquet"
+        retweets_file = directory / user / "retweets.parquet"
+
+        if tweets_file.is_file():
+            print(f"  {tweets_file.name}: {get_size(tweets_file)} bytes")
+        else:
+            print(f"  {tweets_file.name}: File not found")
+
+        if retweets_file.is_file():
+            print(f"  {retweets_file.name}: {get_size(retweets_file)} bytes")
+        else:
+            print(f"  {retweets_file.name}: File not found")
+
+        print()
+
+
+from IPython.display import Markdown, display
+
+def display_data_stats(users):
+    # Define variables
+    total_users = len(users)
+    total_tweets = users.tweets_count.sum()
+
+
+    # Create a markdown table
+    markdown_table = f"""
+    |       Metric       |       Value        |
+    |--------------------|--------------------|
+    | Total Users        |    {total_users}   |
+    | Total Tweets       |    {total_tweets}  |
+    | Size (Raw Data)    |     {total_size}   |
+    """
+
+    # Display the markdown table
+    display(Markdown(markdown_table))
+
+# directory_size = get_directory_size_with_du(data_path)
+# print(f"Size of the data directory: {directory_size} bytes")
+
 def get_train_sentences(size=1000000):
 
     # get all users, and their tweets
@@ -124,6 +199,8 @@ def get_users():
     users = []
     errs = 0
     empty = 0
+
+    udf = pd.DataFrame()
 
     for dir in tqdm.tqdm(files):
         # ipdb.set_trace()
@@ -242,7 +319,7 @@ def get_users():
 
             # ipdb.set_trace()
 
-            metadata = numpy_to_python(metadata)
+            # metadata = numpy_to_python(metadata)
 
             # ipdb.set_trace()
             # if link in metadata["user"]["link"]:, link['indices'] = are np.array, convert to list
@@ -256,7 +333,12 @@ def get_users():
 
             users += [metadata]
 
-    df = pd.DataFrame(users)
+            # every 1000 users, save to udf
+            if len(users) % 1000 == 0:
+                udf = pd.concat([udf, pd.DataFrame(users)])
+                users = []
+
+    df = udf #;pd.DataFrame(users)
 
     # ipdb.set_trace()
 
