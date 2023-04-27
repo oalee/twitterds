@@ -11,7 +11,7 @@ import os
 import numpy as np
 import matplotlib.pyplot as plt
 
-def display_plots(dataframe):
+def     display_plots(dataframe):
     # Scatter plots
     plot_variables = [
         ('tweets_count', 'followers_count'),

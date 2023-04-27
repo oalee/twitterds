@@ -82,6 +82,13 @@ def scrape_tweets(username):
     # ipdb.set_trace()
 
     uname = username
+    downloading_in_progress = os.path.join(
+    env["save_path"], "users", uname, "downloading_in_progress.txt")
+
+    if os.path.exists(downloading_in_progress):
+        print("Already downloading:", uname)
+        return
+
 
     # make a folder with this username
 
@@ -97,12 +104,6 @@ def scrape_tweets(username):
 
     # touch a file for indicating downloading,
 
-    downloading_in_progress = os.path.join(
-        env["save_path"], "users", uname, "downloading_in_progress.txt")
-
-    if os.path.exists(downloading_in_progress):
-        print("Already downloading:", uname)
-        return
 
     # if empty then delete
     if os.path.exists(tweet_path):

@@ -1,3 +1,6 @@
+from IPython.display import Markdown, display
+import hashlib
+from pathlib import Path
 import json
 import random
 import sys
@@ -13,6 +16,22 @@ import numpy as np
 import subprocess
 
 
+def get_userlist():
+    path = os.path.join(env["data"], "users")
+    dirs = os.listdir(path)
+    # check if tweets exist
+
+    # s.path.exists(os.path.join(path, "tweets.parquet")) or retwets:
+
+    return dirs
+
+
+def get_random_user():
+    users = get_userlist()
+    user = random.choice(users)
+    return get_user(user)
+
+
 def get_user(user_name):
 
     path = os.path.join(env["data"], "users", user_name)
@@ -21,7 +40,7 @@ def get_user(user_name):
     # check if tweets exist
     if os.path.exists(os.path.join(path, "tweets.parquet")):
         # check if not empty
-        
+
         try:
             df = pd.read_parquet(os.path.join(path, "tweets.parquet"))
         except:
@@ -40,6 +59,7 @@ def get_user(user_name):
         df = rdf
 
     return df
+
 
 def clean_text(text):
     # Remove mentions
@@ -66,6 +86,7 @@ def get_cleaned_tweets(user_name):
     user['cleanedContent'] = user['rawContent'].apply(clean_text)
     # return cleaned tweets
     return user['cleanedContent']
+
 
 def get_user_df(user_name):
     user = get_user(user_name)
@@ -104,7 +125,6 @@ cnt = 0
 errs = 0
 # handle interrupt
 
-from pathlib import Path
 
 data_path = env['data']
 
@@ -115,9 +135,9 @@ def get_directory_size_with_du(path=data_path):
     size = output.strip().split()[0].decode('utf-8')
     return size
 
+
 user_dir = Path(env["data"]) / "users"
 
-import hashlib
 
 def get_size(path):
     return os.path.getsize(path)
@@ -130,7 +150,8 @@ def hash_username(username, algorithm="sha1"):
 
 
 def visualize_random_users(directory, num_users=10):
-    all_users = [user for user in os.listdir(directory) if os.path.isdir(os.path.join(directory, user))]
+    all_users = [user for user in os.listdir(
+        directory) if os.path.isdir(os.path.join(directory, user))]
     random_users = random.sample(all_users, min(num_users, len(all_users)))
 
     for user in random_users:
@@ -153,13 +174,10 @@ def visualize_random_users(directory, num_users=10):
         print()
 
 
-from IPython.display import Markdown, display
-
 def display_data_stats(users):
     # Define variables
     total_users = len(users)
     total_tweets = users.tweets_count.sum()
-
 
     # Create a markdown table
     markdown_table = f"""
@@ -175,6 +193,7 @@ def display_data_stats(users):
 
 # directory_size = get_directory_size_with_du(data_path)
 # print(f"Size of the data directory: {directory_size} bytes")
+
 
 def get_train_sentences(size=1000000):
 
@@ -193,6 +212,7 @@ def get_train_sentences(size=1000000):
         # print(len(tweets))
 
     return tweets
+
 
 def get_users():
 
@@ -245,11 +265,10 @@ def get_users():
                             users += [metadata]
                             # print("Skipping", dir, "because it is already up to date.")
                             continue
-                        
+
                         # users += [metadata]
                         # # print("Skipping", dir, "because it is already up to date.")
                         # continue
-
 
             # if empty, continue
             if os.stat(tweets_path).st_size == 0:
@@ -259,10 +278,9 @@ def get_users():
             try:
                 df = pd.read_parquet(tweets_path)
 
-                if(df.shape[0] == 0):
+                if (df.shape[0] == 0):
                     empty += 1
                     continue
-
 
                 user = df["user"][0]
                 likes = df["likeCount"].sum().item()
@@ -294,7 +312,7 @@ def get_users():
             else:
                 retweets = 0
             # try:
-                
+
             # except:
             #     ipdb.set_trace()
 
@@ -338,7 +356,7 @@ def get_users():
                 udf = pd.concat([udf, pd.DataFrame(users)])
                 users = []
 
-    df = udf #;pd.DataFrame(users)
+    df = udf  # ;pd.DataFrame(users)
 
     # ipdb.set_trace()
 
@@ -371,6 +389,7 @@ def get_users():
     return df
 
 
-if __name__ == "__main__":
-    get_users()
-    ipdb.set_trace()
+# if __nam__ == "__main__":
+#     get_users()
+#     ipdb.set_trace()
+# e
