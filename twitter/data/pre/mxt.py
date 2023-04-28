@@ -107,7 +107,7 @@ def extract():
         # ipdb.set_trace()
 
         for month_year, group in grouped_tweets:
-            output_dir = os.path.join(env['data'], 'time')
+            output_dir = os.path.join(env['sv_path'], 'time')
             os.makedirs(output_dir, exist_ok=True)
 
             output_filename = f'{month_year}-tweets.parquet'
@@ -116,7 +116,7 @@ def extract():
             append_to_parquet_file(output_path, group)
 
         for month_year, group in grouped_retweets:
-            output_dir = os.path.join(env['data'], 'time')
+            output_dir = os.path.join(env['sv_path'], 'time')
             os.makedirs(output_dir, exist_ok=True)
 
             output_filename = f'{month_year}-retweets.parquet'
