@@ -1,3 +1,4 @@
+import pickle
 import json
 from multiprocessing import Pool, cpu_count
 import os
@@ -11,26 +12,20 @@ import ipdb
 
 env = Environment()
 
-import pickle
 
 # Replace filepath with the path to the pickle file
 p_path = os.path.join(env["data"], "time", "processed_users.pkl")
 
 
-
 # dask df indexed by month_tweets.parquet and month_retweets.parquet
-
-# def init_dask():
-
-#     df = dd.read_parquet(os.path.join(env["data"], "time", "*.parquet"))
-#     ipdb.set_trace()
-
+#
 
 def save_processed_users(processed_users, filepath=p_path):
     with open(filepath, 'wb') as f:
         pickle.dump(processed_users, f)
 
     # print("Saved processed users to:", filepath)
+
 
 def load_processed_users(filepath=p_path):
     if not os.path.exists(filepath):
@@ -39,15 +34,15 @@ def load_processed_users(filepath=p_path):
         return pickle.load(f)
 
 
-
 def clean_content(content):
     if not isinstance(content, str):
         content = str(content)
     return clean_text(content)
 
+
 def safe_int(value):
     try:
-        return np.int64(value)
+        return str(np.int64(value))
     except (TypeError, ValueError):
         return None
 
@@ -70,10 +65,8 @@ def id_prepro(user_df):
 
     user_df['media'] = user_df['media'].notnull()
 
-
     user_df['userId'] = user_df['user'].apply(
         lambda x: safe_int(x['id']) if x.get('id') is not None else None)
-
 
     def get_id(x):
         return safe_int(x['id']) if pd.notna(x) and x.get('id') is not None else None
@@ -85,11 +78,11 @@ def id_prepro(user_df):
     user_df['inReplyToUserId'] = user_df['inReplyToUser'].apply(get_id)
 
     user_df['mentionedUserIds'] = user_df['mentionedUsers'].apply(
-        lambda x: [int(user['id']) for user in x] if x is pd.notna(x) else None)
-
+        lambda x: [str(user['id']) for user in x] if x is pd.notna(x) else None)
 
     # convert all ids to strings
-    
+    for col in ['userId', 'retweetedTweetId', 'retweetedUserId', 'quotedTweetId', 'inReplyToUserId', 'inReplyToUserId', 'inReplyToTweetId']:
+        user_df[col] = user_df[col].apply(str)
 
     return user_df
 
@@ -100,17 +93,16 @@ def append_to_parquet_file(input_file, new_data):
         return
     if os.path.exists(input_file):
         try:
-            
+
             old_data = pd.read_parquet(input_file)
             new_data = pd.concat([old_data, new_data], ignore_index=True)
         except:
             print("Error reading parquet file", input_file)
             return
-        
+
     new_data.to_parquet(input_file, index=False, engine='pyarrow')
 
 
-            
 def save_data_to_parquet(grouped_data, file_prefix):
     for month_year, group in grouped_data:
         output_dir = os.path.join(env['sv_path'], 'time')
@@ -130,7 +122,6 @@ def process_batch(tweets_batch, retweets_batch):
     save_data_to_parquet(retweets_df.groupby('month_year'), 'retweets')
 
 
-
 def process_user(username):
     user_df = get_user(username)
 
@@ -141,12 +132,10 @@ def process_user(username):
     user_df = user_df.drop(
         columns=['retweetedTweet', 'quotedTweet', 'inReplyToUser', 'mentionedUsers', 'user'])
 
-
-
     # Split into tweets and retweets
     retweets = user_df[user_df['retweetedTweetId'].notnull()]
     tweets = user_df[user_df['retweetedTweetId'].isnull()]
-    
+
     # print("Tweets: ", len(tweets), "Retweets: ", len(retweets))
 
     return tweets, retweets
@@ -158,7 +147,8 @@ def extract():
     print("Already ", len(processed_users), "processed users")
     batch_size = 256  # Adjust this value based on your system's memory constraints
     process_size = 4  # Adjust this value based on your system's memory constraints
-    unprocessed_users = [username for username in users_list if username not in processed_users]
+    unprocessed_users = [
+        username for username in users_list if username not in processed_users]
 
     with Pool(processes=process_size) as pool:
         result_iterator = pool.imap_unordered(process_user, unprocessed_users)
@@ -178,13 +168,12 @@ def extract():
                 retweets_batch = []
                 save_processed_users(processed_users)
 
-
             processed_users.add(unprocessed_users[idx])
-            
+
         # Process the remaining data
         if tweets_batch or retweets_batch:
             process_batch(tweets_batch, retweets_batch)
 
+
 if __name__ == "__main__":
     extract()
-
