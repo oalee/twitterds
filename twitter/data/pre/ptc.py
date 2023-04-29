@@ -83,7 +83,7 @@ def id_prepro(user_df):
 
     # convert all ids to strings
     for col in ['userId', 'retweetedTweetId', 'retweetedUserId', 'quotedTweetId', 'inReplyToUserId', 'inReplyToUserId', 'inReplyToTweetId']:
-        user_df[col] = user_df[col].apply(str)
+        user_df[col] = user_df[col].apply(lambda x: str(x) if pd.notna(x) else None)
 
     return user_df
 
@@ -124,22 +124,11 @@ def process_batch(tweets_batch, retweets_batch):
     group_tweets = tweets_df.groupby('month_year')
     group_retweets = retweets_df.groupby('month_year')
 
-    
-
-    # run this on background thread
-    def wrapper():
-        save_data_to_parquet(group_tweets, 'tweets')
-        save_data_to_parquet(group_retweets, 'retweets')
-
-    io_thread = threading.Thread(target=wrapper, args=())
-    io_thread.start()
-
-
 
     
 
-    # save_data_to_parquet(group_tweets, 'tweets')
-    # save_data_to_parquet(group_retweets, 'retweets')
+    save_data_to_parquet(group_tweets, 'tweets')
+    save_data_to_parquet(group_retweets, 'retweets')
 
 
 def process_user(username):
@@ -166,7 +155,7 @@ def extract():
     processed_users = load_processed_users()
     print("Already ", len(processed_users), "processed users")
     batch_size = 256  # Adjust this value based on your system's memory constraints
-    process_size = 8  # Adjust this value based on your system's memory constraints
+    process_size = 4  # Adjust this value based on your system's memory constraints
     unprocessed_users = [
         username for username in users_list if username not in processed_users]
 
