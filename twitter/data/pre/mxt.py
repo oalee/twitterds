@@ -45,10 +45,20 @@ def extract():
     env = Environment()
 
     users_list = get_userlist()
+
+    # somehow cache and create user profiles (with user id, name, preprocesed etc.
+    # and save it to a file, so that we can use it later on)
+
 # Process data for each user
-    for user_df in tqdm.tqdm(user_generator(users_list), total=len(users_list)):
+    for username in tqdm.tqdm(users_list, total=len(users_list)):
         # Ensure 'date' column is a datetime object
         # user_df['date'] = pd.to_datetime(user_df['date'])
+
+        # check if user already analyzed
+
+        
+        # if not, get user df
+        user_df = get_user(username)
 
         # if none continue
         if user_df is None:
@@ -91,14 +101,24 @@ def extract():
 
         user_df['hashtags'] = user_df['hashtags'].apply(
             lambda x: x if x is not None else [])
+        
+        # extract rewteet and quoted tweet, (only where not null)
+        retweets = user_df[user_df['retweetedTweet'].notnull()]
+        # retweets_o
+
+
+
+        quoted_df = user_df[user_df['quotedTweet'].notnull()]['quotedTweet']
+
         user_df = user_df.drop(
             columns=['retweetedTweet', 'quotedTweet', 'inReplyToUser', 'mentionedUsers'])
 
-        # Separate tweets and retweets based on 'RT' at the start of 'rawContent'
-        tweets = user_df[~user_df['rawContent'].str.startswith('RT')]
-        retweets = user_df[user_df['rawContent'].str.startswith('RT')]
 
-        # remove ['reweetedTweet', 'quotedTweet', 'inReplyToUser', 'mentionedUsers']
+        tweets = pd.concat([user_df, quoted_df], ignore_index=True)
+
+    
+
+        # save retweets and quoted tweets
 
         # Group tweets and retweets by month_year
         grouped_tweets = tweets.groupby('month_year')
