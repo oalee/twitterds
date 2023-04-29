@@ -1,3 +1,4 @@
+from concurrent.futures import ThreadPoolExecutor
 import pickle
 import json
 from multiprocessing import Pool, cpu_count
@@ -83,7 +84,8 @@ def id_prepro(user_df):
 
     # convert all ids to strings
     for col in ['userId', 'retweetedTweetId', 'retweetedUserId', 'quotedTweetId', 'inReplyToUserId', 'inReplyToUserId', 'inReplyToTweetId']:
-        user_df[col] = user_df[col].apply(lambda x: str(x) if pd.notna(x) else None)
+        user_df[col] = user_df[col].apply(
+            lambda x: str(x) if pd.notna(x) else None)
 
     return user_df
 
@@ -124,11 +126,26 @@ def process_batch(tweets_batch, retweets_batch):
     group_tweets = tweets_df.groupby('month_year')
     group_retweets = retweets_df.groupby('month_year')
 
+    # save_data_to_parquet(group_tweets, 'tweets')
+    # save_data_to_parquet(group_retweets, 'retweets')
 
+    def wrapper(groups, prefixs):
+        for group, prefix in zip(groups, prefixs):
+            save_data_to_parquet(group, prefix)
+
+    # run on main thread
+    # wrapper([group_tweets, group_retweets], ['tweets', 'retweets'])
+
+    # run on background thread
+    io_thread = threading.Thread(
+        target=wrapper, args=([group_tweets, group_retweets], ['tweets', 'retweets']))
+    io_thread.start()
+    # run on io thre
     
 
-    save_data_to_parquet(group_tweets, 'tweets')
-    save_data_to_parquet(group_retweets, 'retweets')
+    # run on pool thread
+    # with ThreadPoolExecutor(max_workers=2) as executor:
+    #     executor.submit(wrapper, [group_tweets, group_retweets], ['tweets', 'retweets'])
 
 
 def process_user(username):
@@ -155,7 +172,7 @@ def extract():
     processed_users = load_processed_users()
     print("Already ", len(processed_users), "processed users")
     batch_size = 256  # Adjust this value based on your system's memory constraints
-    process_size = 4  # Adjust this value based on your system's memory constraints
+    process_size = 8  # Adjust this value based on your system's memory constraints
     unprocessed_users = [
         username for username in users_list if username not in processed_users]
 
