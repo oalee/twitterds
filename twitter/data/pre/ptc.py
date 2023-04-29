@@ -2,6 +2,7 @@ import pickle
 import json
 from multiprocessing import Pool, cpu_count
 import os
+import threading
 import pandas as pd
 from yerbamate import Environment
 from ..loader.prepro import get_userlist, get_user, clean_text
@@ -118,8 +119,27 @@ def process_batch(tweets_batch, retweets_batch):
     tweets_df = pd.concat(tweets_batch, ignore_index=True)
     retweets_df = pd.concat(retweets_batch, ignore_index=True)
 
-    save_data_to_parquet(tweets_df.groupby('month_year'), 'tweets')
-    save_data_to_parquet(retweets_df.groupby('month_year'), 'retweets')
+    # do this on io thread, so we don't block the main thread
+
+    group_tweets = tweets_df.groupby('month_year')
+    group_retweets = retweets_df.groupby('month_year')
+
+    
+
+    # run this on background thread
+    def wrapper():
+        save_data_to_parquet(group_tweets, 'tweets')
+        save_data_to_parquet(group_retweets, 'retweets')
+
+    io_thread = threading.Thread(target=wrapper, args=())
+    io_thread.start()
+
+
+
+    
+
+    # save_data_to_parquet(group_tweets, 'tweets')
+    # save_data_to_parquet(group_retweets, 'retweets')
 
 
 def process_user(username):
@@ -146,7 +166,7 @@ def extract():
     processed_users = load_processed_users()
     print("Already ", len(processed_users), "processed users")
     batch_size = 256  # Adjust this value based on your system's memory constraints
-    process_size = 4  # Adjust this value based on your system's memory constraints
+    process_size = 8  # Adjust this value based on your system's memory constraints
     unprocessed_users = [
         username for username in users_list if username not in processed_users]
 
