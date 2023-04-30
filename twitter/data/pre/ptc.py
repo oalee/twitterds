@@ -74,7 +74,7 @@ def id_prepro(user_df):
         return safe_int(x['id']) if pd.notna(x) and x.get('id') is not None else None
 
     user_df['retweetedTweetId'] = user_df['retweetedTweet'].apply(get_id)
-    user_df['retweetedUserId'] = user_df['retweetedTweet'].apply(lambda x: int(x['user']['id']) if pd.notna(
+    user_df['retweetedUserId'] = user_df['retweetedTweet'].apply(lambda x: safe_int(x['user']['id']) if pd.notna(
         x) and x.get('user') is not None and x['user'].get('id') is not None else None)
     user_df['quotedTweetId'] = user_df['quotedTweet'].apply(get_id)
     user_df['inReplyToUserId'] = user_df['inReplyToUser'].apply(get_id)
@@ -99,9 +99,14 @@ def append_to_parquet_file(input_file, new_data):
 
             old_data = pd.read_parquet(input_file)
             new_data = pd.concat([old_data, new_data], ignore_index=True)
+            # drop duplicates
+            # new_data = new_data.drop_duplicates( subset=['id'], keep='last')
         except:
             print("Error reading parquet file", input_file)
-            return
+
+    # if new_data.empty:
+
+            # return
 
     new_data.to_parquet(input_file, index=False, engine='pyarrow')
 
@@ -118,34 +123,20 @@ def save_data_to_parquet(grouped_data, file_prefix):
 
 
 def process_batch(tweets_batch, retweets_batch):
+
     tweets_df = pd.concat(tweets_batch, ignore_index=True)
     retweets_df = pd.concat(retweets_batch, ignore_index=True)
 
-    # do this on io thread, so we don't block the main thread
-
     group_tweets = tweets_df.groupby('month_year')
     group_retweets = retweets_df.groupby('month_year')
-
-    # save_data_to_parquet(group_tweets, 'tweets')
-    # save_data_to_parquet(group_retweets, 'retweets')
 
     def wrapper(groups, prefixs):
         for group, prefix in zip(groups, prefixs):
             save_data_to_parquet(group, prefix)
 
-    # run on main thread
-    # wrapper([group_tweets, group_retweets], ['tweets', 'retweets'])
-
-    # run on background thread
     io_thread = threading.Thread(
         target=wrapper, args=([group_tweets, group_retweets], ['tweets', 'retweets']))
     io_thread.start()
-    # run on io thre
-    
-
-    # run on pool thread
-    # with ThreadPoolExecutor(max_workers=2) as executor:
-    #     executor.submit(wrapper, [group_tweets, group_retweets], ['tweets', 'retweets'])
 
 
 def process_user(username):
@@ -158,11 +149,8 @@ def process_user(username):
     user_df = user_df.drop(
         columns=['retweetedTweet', 'quotedTweet', 'inReplyToUser', 'mentionedUsers', 'user'])
 
-    # Split into tweets and retweets
     retweets = user_df[user_df['retweetedTweetId'].notnull()]
     tweets = user_df[user_df['retweetedTweetId'].isnull()]
-
-    # print("Tweets: ", len(tweets), "Retweets: ", len(retweets))
 
     return tweets, retweets
 
@@ -171,8 +159,8 @@ def extract():
     users_list = get_userlist()
     processed_users = load_processed_users()
     print("Already ", len(processed_users), "processed users")
-    batch_size = 256  # Adjust this value based on your system's memory constraints
-    process_size = 8  # Adjust this value based on your system's memory constraints
+    batch_size = 512  # Adjust this value based on your system's memory constraints
+    process_size = 16  # Adjust this value based on your system's memory constraints
     unprocessed_users = [
         username for username in users_list if username not in processed_users]
 

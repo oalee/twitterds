@@ -111,7 +111,7 @@ def extract():
         quoted_df = user_df[user_df['quotedTweet'].notnull()]['quotedTweet']
 
         user_df = user_df.drop(
-            columns=['retweetedTweet', 'quotedTweet', 'inReplyToUser', 'mentionedUsers'])
+            columns=['retweetedTweet', 'quotedTweet', 'inReplyToUser', 'mentionedUsers', 'user'])
 
 
         tweets = pd.concat([user_df, quoted_df], ignore_index=True)
