@@ -27,6 +27,24 @@ p_path = os.path.join(env["data"], "time", "processed_users.pkl")
 # dask df indexed by month_tweets.parquet and month_retweets.parquet
 #
 
+
+def process_and_save_batch(users_batch, output_path, metadata):
+    # Read and preprocess data in parallel using Dask delayed
+    delayed_data = [dd.from_delayed(delayed(process_user)(
+        username), meta=metadata) for username in users_batch]
+
+    # Concatenate the data into a single Dask DataFrame
+    combined_data = dd.concat(
+        [df for df in delayed_data if df is not None], axis=0)
+
+    # Optimize the Dask task graph for better performance
+    combined_data = combined_data.persist()
+
+    # Save the data to Parquet format, partitioned by month_year and user
+    with ProgressBar():
+        combined_data.to_parquet(output_path, partition_on=['month_year'])
+
+
 def save_processed_users(processed_users, filepath=p_path):
     with open(filepath, 'wb') as f:
         pickle.dump(processed_users, f)
@@ -162,7 +180,8 @@ def process_user(username):
     return user_df
 
 
-def process_large_data():
+def process_large_data(batch_size=1000):
+
     users_list = get_userlist()
     processed_users = load_processed_users()
 
@@ -201,33 +220,30 @@ def process_large_data():
         'mentionedUserIds': 'str',
     }
 
-    # for col, dtype in zip(user_meta.columns, ['object', 'datetime64[ns, UTC]', 'object', 'Int64', 'Int64', 'Int64', 'Int64', 'Int64', 'Int64',
-    #                                           'object', 'bool', 'object', 'object', 'object', 'object', 'object', 'object', 'object',
-    #                                           'object', 'object', 'object', 'object']):
-    #     user_meta[col] = user_meta[col].astype(dtype)
-    batch_size = 1000
-    batches = unprocessed_users[0: batch_size]
-
     print("Processing", len(unprocessed_users), "users")
     # Read and preprocess data in parallel using Dask delayed
-    delayed_data = [dd.from_delayed(delayed(process_user)(
-        username), meta=metadata) for username in batches]
 
-    print("Processing delayed ", len(delayed_data), "users")
+    output_path = os.path.join(env['sv_path'], 'time')
+
+    # Process and save data in batches
+    for i in tqdm.trange(len(processed_users), len(users_list), batch_size):
+        users_batch = unprocessed_users[i:i + batch_size]
+        process_and_save_batch(users_batch, output_path, metadata)
+        processed_users = processed_users.union(users_batch)
+
+        save_processed_users(processed_users)
+
+    remaining_users = len(unprocessed_users) - len(processed_users)
+    remain_batch = unprocessed_users[-remaining_users:]
+    process_and_save_batch(remain_batch, output_path, metadata)
+    processed_users = processed_users.union(remain_batch)
+
+    # delayed_data = [dd.from_delayed(delayed(process_user)(
+    #     username), meta=metadata) for username in unprocessed_users]
+
+    # print("Processing delayed ", len(delayed_data), "users")
 
     # Concatenate the data into a single Dask DataFrame
-    combined_data = dd.concat(
-        [df for df in delayed_data if df is not None], axis=0)
-
-    # Optimize the Dask task graph for better performance
-    combined_data = combined_data.persist()
-
-    # Save the data to Parquet format, partitioned by month_year and user
-    output_path = os.path.join(env['sv_path'], 'time')
-    with ProgressBar():
-        combined_data.to_parquet(output_path, partition_on=[
-                                 'month_year', 'userId'], compression='snappy')
-
     # Clean up the Dask client resources
     client.close()
 

@@ -12,6 +12,8 @@ import numpy as np
 import vaex
 import ipdb
 
+import pyarrow as pa
+
 env = Environment()
 
 
@@ -19,8 +21,24 @@ env = Environment()
 p_path = os.path.join(env["data"], "time", "processed_users.pkl")
 
 
-# dask df indexed by month_tweets.parquet and month_retweets.parquet
-#
+def populate_vx_map():
+    # map from month_year to vaex df
+    # from 2007-01 to 2023-04
+    vx_map = {}
+    for year in range(2007, 2024):
+        for month in range(1, 13):
+            month_year = f"{year}-{month:02}"
+            filepath = os.path.join(
+                env["data"], "time", f"{month_year}.parquet")
+            if os.path.exists(filepath):
+                vx_map[month_year] = vaex.open(filepath)
+            else:
+                vx_map[month_year] = None
+
+    return vx_map
+
+vx_map = populate_vx_map()
+
 
 def save_processed_users(processed_users, filepath=p_path):
     with open(filepath, 'wb') as f:
@@ -43,8 +61,10 @@ def clean_content(content):
 
 
 def safe_int(value):
+    if value is None:
+        return None
     try:
-        return str(np.int64(value))
+        return np.str0(np.int64(value))
     except (TypeError, ValueError):
         return None
 
@@ -54,14 +74,14 @@ def id_prepro(user_df):
         return user_df
 
     user_df['month_year'] = user_df['date'].dt.strftime('%Y-%m')
-    user_df['text'] = user_df['rawContent'].apply(clean_content)
+    # user_df['text'] = user_df['rawContent'].apply(clean_content)
 
     user_df = user_df[user_df['user'].notnull()].copy()
 
     # user_df['userId'] = user_df['user'].apply(
     #     lambda x: int(x['id']) if x.get('id') is not None else None)
 
-    remove_columns = ['vibe', 'place', 'card', 'cashtags', 'coordinates',
+    remove_columns = ['vibe', 'place', 'card', 'cashtags', 'coordinates', 'text', 'url',
                       'source', 'sourceUrl', 'sourceLabel', 'renderedContent', 'links', 'textLinks']
     user_df = user_df.drop(columns=remove_columns, errors='ignore')
 
@@ -79,13 +99,26 @@ def id_prepro(user_df):
     user_df['quotedTweetId'] = user_df['quotedTweet'].apply(get_id)
     user_df['inReplyToUserId'] = user_df['inReplyToUser'].apply(get_id)
 
+    # user_df['mentionedUserIds'] = user_df['mentionedUsers'].apply(lambda x: [safe_int(user['id']) for user in x] if pd.notnull(x) else None)
+
     user_df['mentionedUserIds'] = user_df['mentionedUsers'].apply(
-        lambda x: [str(user['id']) for user in x] if x is pd.notna(x) else None)
+        lambda x: json.dumps([user['id'] for user in x]) if x is not None else None)
+
+    user_df['hashtags'] = user_df['hashtags'].apply(
+        lambda x: json.dumps([item for item in x]) if x is not None else None)
+    # json dump hash
 
     # convert all ids to strings
-    for col in ['userId', 'retweetedTweetId', 'retweetedUserId', 'quotedTweetId', 'inReplyToUserId', 'inReplyToUserId', 'inReplyToTweetId']:
+    for col in ['userId', 'retweetedTweetId', 'conversationId' ,'retweetedUserId', 'quotedTweetId', 'inReplyToUserId', 'inReplyToUserId', 'inReplyToTweetId']:
         user_df[col] = user_df[col].apply(
             lambda x: str(x) if pd.notna(x) else None)
+
+    # convert counts to int
+    columns = ['replyCount', 'retweetCount',
+               'likeCount', 'quoteCount', 'viewCount']
+
+    for col in columns:
+        user_df[col] = user_df[col].apply(safe_int)
 
     return user_df
 
@@ -112,23 +145,31 @@ def append_to_parquet_file(input_file, new_data):
 
 
 def save_data_to_parquet(grouped_data, file_prefix):
+    global vx_map
     for month_year, group in grouped_data:
         output_dir = os.path.join(env['sv_path'], 'time')
         os.makedirs(output_dir, exist_ok=True)
-
-        output_filename = f'{month_year}-{file_prefix}.parquet'
+        month_year = month_year[0]
+        output_filename = f'{month_year}.parquet'
         output_path = os.path.join(output_dir, output_filename)
 
-        append_to_parquet_file(output_path, group)
+        if vx_map[month_year] is not None:
+            vx_map[month_year] = vx_map[month_year].concat(group)
+        else:
+            vx_map[month_year] = group
+        # export to parquet
+        # ipdb.set_trace()
+        vx_map[month_year].export(output_path, index=False)
+        # append_to_parquet_file(output_path, group)
 
 
 def process_batch(tweets_batch, retweets_batch):
 
-    tweets_df = vaex.concat([ vaex.from_pandas(t) for t in tweets_batch])
-    retweets_df = vaex.concat([ vaex.from_pandas(r) for r in retweets_batch])
+    tweets_df = vaex.concat([vaex.from_pandas(t) for t in tweets_batch])
+    # retweets_df = vaex.concat([vaex.from_pandas(r) for r in retweets_batch])
 
     group_tweets = tweets_df.groupby('month_year')
-    group_retweets = retweets_df.groupby('month_year')
+    # group_retweets = retweets_df.groupby('month_year')
 
     def wrapper(groups, prefixs):
         for group, prefix in zip(groups, prefixs):
@@ -138,7 +179,10 @@ def process_batch(tweets_batch, retweets_batch):
     #     target=wrapper, args=([group_tweets, group_retweets], ['tweets', 'retweets']))
     # io_thread.start()
 
-    wrapper([group_tweets, group_retweets], ['tweets', 'retweets'])
+    wrapper([group_tweets], ['tweets'])
+
+    # io_thread = threading.Thread(target=export_vx_map)
+
 
 def process_user(username):
     user_df = get_user(username)
@@ -150,44 +194,43 @@ def process_user(username):
     user_df = user_df.drop(
         columns=['retweetedTweet', 'quotedTweet', 'inReplyToUser', 'mentionedUsers', 'user'])
 
-    retweets = user_df[user_df['retweetedTweetId'].notnull()]
+    # ipdb.set_trace()
+    # retweets = user_df[user_df['retweetedTweetId'].notnull()]
     tweets = user_df[user_df['retweetedTweetId'].isnull()]
 
-    return tweets, retweets
+    return tweets, None
 
 
 def extract():
     users_list = get_userlist()
     processed_users = load_processed_users()
     print("Already ", len(processed_users), "processed users")
-    batch_size = 10  # Adjust this value based on your system's memory constraints
-    process_size = 16  # Adjust this value based on your system's memory constraints
+    batch_size = 64  # Adjust this value based on your system's memory constraints
+    process_size = 1  # Adjust this value based on your system's memory constraints
     unprocessed_users = [
         username for username in users_list if username not in processed_users]
 
-    with Pool(processes=process_size) as pool:
-        result_iterator = pool.imap_unordered(process_user, unprocessed_users)
+    tweets_batch = []
+    retweets_batch = []
+    for idx, username in enumerate(tqdm.tqdm(unprocessed_users, total=len(unprocessed_users))):
+        tweets, retweets = process_user(username)
 
-        tweets_batch = []
-        retweets_batch = []
+        if tweets is not None or retweets is not None:
+            # Accumulate tweets and retweets in their respective lists
+            tweets_batch.append(tweets)
+            retweets_batch.append(retweets)
 
-        for idx, (tweets, retweets) in enumerate(tqdm.tqdm(result_iterator, total=len(unprocessed_users))):
-            if tweets is not None or retweets is not None:
-                # Accumulate tweets and retweets in their respective lists
-                tweets_batch.append(tweets)
-                retweets_batch.append(retweets)
-
-            if (idx + 1) % batch_size == 0:
-                process_batch(tweets_batch, retweets_batch)
-                tweets_batch = []
-                retweets_batch = []
-                save_processed_users(processed_users)
-
-            processed_users.add(unprocessed_users[idx])
-
-        # Process the remaining data
-        if tweets_batch or retweets_batch:
+        if (idx + 1) % batch_size == 0:
             process_batch(tweets_batch, retweets_batch)
+            tweets_batch = []
+            retweets_batch = []
+            save_processed_users(processed_users)
+
+        processed_users.add(username)
+
+    # Process the remaining data
+    if tweets_batch or retweets_batch:
+        process_batch(tweets_batch, retweets_batch)
 
 
 if __name__ == "__main__":
