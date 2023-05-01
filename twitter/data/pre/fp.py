@@ -13,6 +13,7 @@ import vaex
 import ipdb
 from concurrent.futures import ThreadPoolExecutor
 
+import fastparquet as fp
 import pyarrow as pa
 
 env = Environment()
@@ -22,23 +23,23 @@ env = Environment()
 p_path = os.path.join(env["data"], "time", "processed_users.pkl")
 
 
-def populate_vx_map():
-    # map from month_year to vaex df
-    # from 2007-01 to 2023-04
-    vx_map = {}
-    for year in range(2007, 2024):
-        for month in range(1, 13):
-            month_year = f"{year}-{month:02}"
-            filepath = os.path.join(
-                env["data"], "time", f"{month_year}.parquet")
-            if os.path.exists(filepath):
-                vx_map[month_year] = vaex.open(filepath)
-            else:
-                vx_map[month_year] = None
+# def populate_vx_map():
+#     # map from month_year to vaex df
+#     # from 2007-01 to 2023-04
+#     vx_map = {}
+#     for year in range(2007, 2024):
+#         for month in range(1, 13):
+#             month_year = f"{year}-{month:02}"
+#             filepath = os.path.join(
+#                 env["data"], "time", f"{month_year}.parquet")
+#             if os.path.exists(filepath):
+#                 vx_map[month_year] = vaex.open(filepath)
+#             else:
+#                 vx_map[month_year] = None
 
-    return vx_map
+#     return vx_map
 
-vx_map = populate_vx_map()
+# vx_map = populate_vx_map()
 
 
 def save_processed_users(processed_users, filepath=p_path):
@@ -110,7 +111,7 @@ def id_prepro(user_df):
     # json dump hash
 
     # convert all ids to strings
-    for col in ['userId', 'retweetedTweetId', 'conversationId' ,'retweetedUserId', 'quotedTweetId', 'inReplyToUserId', 'inReplyToUserId', 'inReplyToTweetId']:
+    for col in ['userId', 'retweetedTweetId', 'conversationId', 'retweetedUserId', 'quotedTweetId', 'inReplyToUserId', 'inReplyToUserId', 'inReplyToTweetId']:
         user_df[col] = user_df[col].apply(
             lambda x: str(x) if pd.notna(x) else None)
 
@@ -145,33 +146,43 @@ def append_to_parquet_file(input_file, new_data):
     new_data.export(input_file, index=False)
 
 
-def save_data_to_parquet(grouped_data):
-    global vx_map
+def save_data_to_parquet(grouped_data, prefix):
+    # global vx_map
     print("Saving data to parquet")
     for month_year, group in grouped_data:
+        if group is None:
+            continue
         output_dir = os.path.join(env['sv_path'], 'time')
-        os.makedirs(output_dir, exist_ok=True)
-        month_year = month_year[0]
-        output_filename = f'{month_year}.parquet'
+        # os.makedirs(output_dir, exist_ok=True)
+        month_year = month_year
+        output_filename = f'{month_year}_{prefix}.parquet'
         output_path = os.path.join(output_dir, output_filename)
 
-        if vx_map[month_year] is not None:
-            vx_map[month_year] = vx_map[month_year].concat(group)
-        else:
-            vx_map[month_year] = group
+        append = os.path.exists(output_path)
+
+        fp.write(output_path, group, append=append, object_encoding='utf8')
+
+        print("Saved data to parquet", output_path)
+        # if vx_map[month_year] is not None:
+        #     vx_map[month_year] = vx_map[month_year].concat(group)
+        # else:
+        #     vx_map[month_year] = group
         # export to parquet
         # ipdb.set_trace()
-        vx_map[month_year].export(output_path, index=False)
-        print("Saved data to parquet", output_path)
+        # vx_map[month_year].export(output_path, index=False)
+        # print("Saved data to parquet", output_path)
         # append_to_parquet_file(output_path, group)
 
 
 def process_batch(tweets_batch, retweets_batch):
 
-    tweets_df = vaex.concat([vaex.from_pandas(t) for t in tweets_batch])
+    tweets_df = pd.concat([t for t in tweets_batch])
+    # retweets_df = pd.concat([r for r in retweets_batch])
     # retweets_df = vaex.concat([vaex.from_pandas(r) for r in retweets_batch])
 
     group_tweets = tweets_df.groupby('month_year')
+    # rt_group_tweets = retweets_df.groupby('month_year')
+
     # group_retweets = retweets_df.groupby('month_year')
 
     # def wrapper(groups, prefixs):
@@ -187,7 +198,8 @@ def process_batch(tweets_batch, retweets_batch):
 
     # io_th = threading.Thread(target=save_data_to_parquet, args=(group_tweets,))
     # io_th.start()
-    save_data_to_parquet(group_tweets)
+    save_data_to_parquet(group_tweets, "tweets")
+    # save_data_to_parquet(rt_group_tweets, "retweets")
     # wrapper([group_tweets], ['tweets'])
 
     # io_thread = threading.Thread(target=export_vx_map)
@@ -204,26 +216,28 @@ def process_user(username):
         columns=['retweetedTweet', 'quotedTweet', 'inReplyToUser', 'mentionedUsers', 'user'])
 
     # ipdb.set_trace()
-    # retweets = user_df[user_df['retweetedTweetId'].notnull()]
+    retweets = user_df[user_df['retweetedTweetId'].notnull()]
     tweets = user_df[user_df['retweetedTweetId'].isnull()]
 
-    return tweets, None
+    return tweets, retweets
 
 
 def extract():
     users_list = get_userlist()
     processed_users = load_processed_users()
     print("Already ", len(processed_users), "processed users")
-    batch_size = 32  # Adjust this value based on your system's memory constraints
+    batch_size = 64  # Adjust this value based on your system's memory constraints
     process_size = 1  # Adjust this value based on your system's memory constraints
     unprocessed_users = [
         username for username in users_list if username not in processed_users]
 
     tweets_batch = []
     retweets_batch = []
-    for idx, username in enumerate(tqdm.tqdm(unprocessed_users, total=len(unprocessed_users))):
-        tweets, retweets = process_user(username)
 
+    # handle the case where the process was interrupted
+
+    for idx, username in tqdm.tqdm(enumerate(unprocessed_users), total=len(unprocessed_users)):
+        tweets, retweets = process_user(username)
         if tweets is not None or retweets is not None:
             # Accumulate tweets and retweets in their respective lists
             tweets_batch.append(tweets)
