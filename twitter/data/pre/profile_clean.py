@@ -1,5 +1,6 @@
+import concurrent
 from .id_clean_prepro import id_prepro
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
 import pickle
 import json
 from multiprocessing import Pool, cpu_count
@@ -14,6 +15,7 @@ import vaex
 import ipdb
 from concurrent.futures import ThreadPoolExecutor
 
+import filelock
 import fastparquet as fp
 import pyarrow as pa
 
@@ -46,23 +48,21 @@ def save_profile_to_pickle(user, path):
 
 def append_to_parquet_file(input_file, new_data):
 
-    # if new_data.:
-    #     return
-    if os.path.exists(input_file):
-        try:
+    lock_file = input_file + ".lock"
 
-            old_data = vaex.read_parquet(input_file)
-            new_data = vaex.concat([old_data, new_data], ignore_index=True)
-            # drop duplicates
-            # new_data = new_data.drop_duplicates( subset=['id'], keep='last')
-        except:
-            print("Error reading parquet file", input_file)
+    with filelock.FileLock(lock_file, timeout=30):
+        if os.path.exists(input_file):
+            try:
+                old_data = pd.read_parquet(input_file)
+                new_data = pd.concat([old_data, new_data], ignore_index=True)
+                # drop duplicates
+                new_data = new_data.drop_duplicates(
+                    subset=['id'], keep='first')
+            except Exception as e:
+                print(f"Error reading parquet file {input_file}: {e}")
+                return
 
-    # if new_data.empty:
-
-            # return
-
-    new_data.export(input_file, index=False)
+        new_data.to_parquet(input_file, index=False)
 
 
 def save_data_to_parquet(grouped_data, prefix):
@@ -130,16 +130,20 @@ def save_new_user_profile(user, tweets_df, base_path):
 
     # Save user tweets
     tweets_path = os.path.join(user_path, 'tweets.parquet')
-    if os.path.exists(tweets_path):
-        existing_tweets_df = pd.read_parquet(tweets_path)
-        updated_tweets_df = pd.concat(
-            [existing_tweets_df, tweets_df]).drop_duplicates(subset=['id'])
-    else:
-        updated_tweets_df = tweets_df
-    updated_tweets_df.to_parquet(tweets_path)
+
+    append_to_parquet_file(tweets_path, tweets_df)
+    # lock_file = tweets_path + ".lock"
+
+    # if os.path.exists(tweets_path):
+    #     existing_tweets_df = pd.read_parquet(tweets_path)
+    #     updated_tweets_df = pd.concat(
+    #         [existing_tweets_df, tweets_df]).drop_duplicates(subset=['id'])
+    # else:
+    #     updated_tweets_df = tweets_df
+    # updated_tweets_df.to_parquet(tweets_path)
 
 
-def process_profile(user_df):
+def process_profile(username, user_df):
 
     # get rewtweetedTweetUserNames
 
@@ -164,12 +168,18 @@ def process_profile(user_df):
     unique_users = user_df.loc[user_df['user'].apply(
         lambda x: x['id']).drop_duplicates().index, 'user']
 
-    self_user = unique_users.to_list()[0]
+    try:
+        self_user = unique_users.to_list()[0]
+    except:
+        # no self_user found
+        self_user = None
+        # ipdb.set_trace()
 
-    path = os.path.join(
-        env['sv_path'], 'users', self_user['username'], 'profile.pickle')
+    path = os.path.join(env['sv_path'], 'users',
+                        username, 'profile.pickle')
 
-    save_profile_to_pickle(self_user, path)
+    if self_user is not None:
+        save_profile_to_pickle(self_user, path)
 
     # ipdb.set_trace()
 
@@ -197,7 +207,7 @@ def process_profile(user_df):
         new_tweets_not_gu = new_tweets[~new_tweets['username'].isin(userList)]
         grouped_tweets_not_gu = new_tweets_not_gu.groupby('username')
 
-        for username, tweets_df in grouped_tweets_not_gu:
+        for _, tweets_df in grouped_tweets_not_gu:
             user_profile = tweets_df.iloc[0]['user']
             df = drop_obj_column(id_prepro(tweets_df))
             # drop username column
@@ -214,7 +224,7 @@ def process_profile(user_df):
 
     cleaned = drop_obj_column(user_df)
 
-    uname = self_user['username']
+    uname = username  # $self_user['username']
     assert uname != None, "Username must be found"
 
     # rewrite self user tweets, remove retweets.parquet (now merged)
@@ -222,10 +232,10 @@ def process_profile(user_df):
     tw_path = os.path.join(env["data"], "users", uname, "tweets.parquet")
     rt_path = os.path.join(env["data"], "users", uname, "retweets.parquet")
 
+    cleaned.to_parquet(tw_path)
+
     if os.path.exists(rt_path):
         os.remove(rt_path)
-
-    cleaned.to_parquet(tw_path)
 
     return self_user
     # save cleanded to tweets.parquet
@@ -237,7 +247,8 @@ def process_profile(user_df):
     # get their rts, drop the rawContent column, url, and
 
 
-def process_user(username):
+def process_user(args):
+    username, idx = args
     user_df = get_user(username)
 
     if user_df is None or user_df.empty:
@@ -246,11 +257,18 @@ def process_user(username):
     # if no user column, then already processed
     if 'user' not in user_df.columns:
         print("Already processed user: ", username)
+        # ipdb.set_trace()
         return None  # , None
 
+    # ipdb.set_trace()
     user_df = id_prepro(user_df)  # preprocess tweets and add ids
 
-    profiles = process_profile(user_df)
+    # if no user column, then, something went wrong
+    # maybe the user is not available anymore
+    # in any case, we can save the tweets and retweets
+    # and move on to the next user
+
+    profiles = process_profile(username, user_df)
 
     # user_df = user_df.drop(
     #     columns=['retweetedTweet', 'quotedTweet', 'inReplyToUser', 'mentionedUsers', 'user'])
@@ -259,7 +277,7 @@ def process_user(username):
     # retweets = user_df[user_df['retweetedTweetId'].notnull()]
     # tweets = user_df[user_df['retweetedTweetId'].isnull()]
 
-    return profiles  # tweets, retweets
+    return idx, profiles  # tweets, retweets
 
 
 def extract():
@@ -270,7 +288,7 @@ def extract():
     processed_users = load_processed_users(path)
     print("Already ", len(processed_users), "processed users")
     batch_size = 64  # Adjust this value based on your system's memory constraints
-    process_size = 1  # Adjust this value based on your system's memory constraints
+    process_size = 8  # Adjust this value based on your system's memory constraints
     unprocessed_users = [
         username for username in users_list if username not in processed_users]
 
@@ -279,23 +297,46 @@ def extract():
 
     # handle the case where the process was interrupted
 
-    for idx, username in tqdm.tqdm(enumerate(unprocessed_users), total=len(unprocessed_users)):
+    with ProcessPoolExecutor(max_workers=process_size) as executor:
+        futures = {executor.submit(process_user, (username, idx)): idx for idx, username in enumerate(unprocessed_users)}
+        for future in tqdm.tqdm(concurrent.futures.as_completed(futures), total=len(unprocessed_users)):
+            idx = futures[future]
+            try:
+                result_idx, profiles = future.result()
+                assert idx == result_idx
 
-        tweets = process_user(username)
-        if tweets is not None:
-            # Accumulate tweets and retweets in their respective lists
-            tweets_batch.append(tweets)
+                    # if profiles is not None:
+                # if profiles is not None:
+                #     tweets_batch.append(profiles)
+                # print("Processed user: ", unprocessed_users[idx])
 
-        if (idx + 1) % batch_size == 0:
-            # process_batch(tweets_batch)
-            # tweets_batch = []
-            save_processed_users(processed_users, path)
+                if (idx + 1) % batch_size == 0:
+                    # process_batch(tweets_batch)
+                    # tweets_batch = []
+                    save_processed_users(processed_users, path)
 
-        processed_users.add(username)
+                processed_users.add(unprocessed_users[idx])
 
-    # Process the remaining data
-    if tweets_batch != []:
-        process_batch(tweets_batch)
+            except Exception as e:
+                print(f"Error processing user at index {idx}: {e}")
+
+    # for idx, username in tqdm.tqdm(enumerate(unprocessed_users), total=len(unprocessed_users)):
+
+    #     tweets = process_user(username)
+    #     if tweets is not None:
+    #         # Accumulate tweets and retweets in their respective lists
+    #         tweets_batch.append(tweets)
+
+    #     if (idx + 1) % batch_size == 0:
+    #         # process_batch(tweets_batch)
+    #         # tweets_batch = []
+    #         save_processed_users(processed_users, path)
+
+    #     processed_users.add(username)
+
+    # # Process the remaining data
+    # if tweets_batch != []:
+    #     process_batch(tweets_batch)
 
 
 if __name__ == "__main__":

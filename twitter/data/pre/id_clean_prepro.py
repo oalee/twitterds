@@ -57,7 +57,7 @@ def id_prepro(user_df):
             x, (list, tuple)) else None)
 
     user_df['hashtags'] = user_df['hashtags'].apply(
-        lambda x: json.dumps([item for item in x]) if x is not None else None)
+        lambda x: json.dumps([item for item in x]) if x is not None and isinstance(list, tuple) else None)
 
     for col in ['userId', 'retweetedTweetId', 'conversationId', 'retweetedUserId', 'quotedTweetId', 'inReplyToUserId', 'inReplyToUserId', 'inReplyToTweetId']:
         user_df[col] = user_df[col].apply(
