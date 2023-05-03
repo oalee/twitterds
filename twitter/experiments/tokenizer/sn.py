@@ -22,7 +22,7 @@ old_tokenizer = LlamaTokenizer.from_pretrained(lamma_tokenizer_path)
 special_tokens = list(old_tokenizer.special_tokens_map.values())
 
 # formatted_special_tokens = ','.join(special_tokens)
-ipdb.set_trace()
+# ipdb.set_trace()
 
 
 bos_id = old_tokenizer.convert_tokens_to_ids(

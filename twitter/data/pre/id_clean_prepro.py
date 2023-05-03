@@ -53,7 +53,8 @@ def id_prepro(user_df):
     # user_df['mentionedUserIds'] = user_df['mentionedUsers'].apply(lambda x: [safe_int(user['id']) for user in x] if pd.notnull(x) else None)
 
     user_df['mentionedUserIds'] = user_df['mentionedUsers'].apply(
-        lambda x: json.dumps([user['id'] for user in x]) if x is not None else None)
+        lambda x: json.dumps([user['id'] for user in x]) if x is not None and isinstance(
+            x, (list, tuple)) else None)
 
     user_df['hashtags'] = user_df['hashtags'].apply(
         lambda x: json.dumps([item for item in x]) if x is not None else None)
@@ -64,10 +65,9 @@ def id_prepro(user_df):
 
     # convert counts to int
     columns = ['replyCount', 'retweetCount',
-               'likeCount', 'quoteCount', 'viewCount']
+               'likeCount', 'quoteCount', 'viewCount', 'conversationId']
 
     for col in columns:
         user_df[col] = user_df[col].apply(safe_str_int)
 
     return user_df
-

@@ -167,9 +167,11 @@ def process_profile(user_df):
     self_user = unique_users.to_list()[0]
 
     path = os.path.join(
-        env['sv_path'], self_user['username'], 'user_self.pickle')
+        env['sv_path'], 'users', self_user['username'], 'profile.pickle')
 
     save_profile_to_pickle(self_user, path)
+
+    # ipdb.set_trace()
 
     flat_mt_users = [user for sublist in mt_user_names for user in (
         sublist if sublist is not None else [])]
@@ -184,17 +186,24 @@ def process_profile(user_df):
     # users_in_gu = [user for user in all_user_names if user in userList]
 
     new_tweets = pd.concat([rts, not_none_quoted_tweets])
+    new_tweets = new_tweets.apply(pd.Series)
 
-    new_tweets['username'] = new_tweets['user'].apply(lambda x: x['username'])
-    new_tweets_not_gu = new_tweets[~new_tweets['username'].isin(userList)]
+    # if new_tweets is not empty, process
+    if not new_tweets.empty:
+        new_tweets = new_tweets.dropna(subset=['user'])
+        new_tweets['username'] = new_tweets['user'].apply(
+            lambda x: x['username'])
 
-    grouped_tweets_not_gu = new_tweets_not_gu.groupby('username')
+        new_tweets_not_gu = new_tweets[~new_tweets['username'].isin(userList)]
+        grouped_tweets_not_gu = new_tweets_not_gu.groupby('username')
 
-    for username, tweets_df in grouped_tweets_not_gu:
-        user_profile = tweets_df.iloc[0]['user']
-        df = drop_obj_column(id_prepro(tweets_df))
-        save_new_user_profile(
-            user_profile, df, os.path.join(env['data'], 'new_users'))
+        for username, tweets_df in grouped_tweets_not_gu:
+            user_profile = tweets_df.iloc[0]['user']
+            df = drop_obj_column(id_prepro(tweets_df))
+            # drop username column
+            df.drop(columns=['username'], inplace=True)
+            save_new_user_profile(
+                user_profile, df, os.path.join(env['data'], 'new_users'))
 
     # drop new_tweets users that are in gu
 
@@ -204,8 +213,6 @@ def process_profile(user_df):
     user_df.loc[user_df['retweetedTweet'].notnull(), 'rawContent'] = None
 
     cleaned = drop_obj_column(user_df)
-
-    ipdb.set_trace()
 
     uname = self_user['username']
     assert uname != None, "Username must be found"
@@ -219,6 +226,8 @@ def process_profile(user_df):
         os.remove(rt_path)
 
     cleaned.to_parquet(tw_path)
+
+    return self_user
     # save cleanded to tweets.parquet
 
     # if os.path.exists(tw_path):
@@ -232,20 +241,25 @@ def process_user(username):
     user_df = get_user(username)
 
     if user_df is None or user_df.empty:
-        return None, None
+        return None  # , None
+
+    # if no user column, then already processed
+    if 'user' not in user_df.columns:
+        print("Already processed user: ", username)
+        return None  # , None
 
     user_df = id_prepro(user_df)  # preprocess tweets and add ids
 
     profiles = process_profile(user_df)
 
-    user_df = user_df.drop(
-        columns=['retweetedTweet', 'quotedTweet', 'inReplyToUser', 'mentionedUsers', 'user'])
+    # user_df = user_df.drop(
+    #     columns=['retweetedTweet', 'quotedTweet', 'inReplyToUser', 'mentionedUsers', 'user'])
 
-    # ipdb.set_trace()
-    retweets = user_df[user_df['retweetedTweetId'].notnull()]
-    tweets = user_df[user_df['retweetedTweetId'].isnull()]
+    # # ipdb.set_trace()
+    # retweets = user_df[user_df['retweetedTweetId'].notnull()]
+    # tweets = user_df[user_df['retweetedTweetId'].isnull()]
 
-    return tweets, retweets
+    return profiles  # tweets, retweets
 
 
 def extract():
@@ -273,8 +287,8 @@ def extract():
             tweets_batch.append(tweets)
 
         if (idx + 1) % batch_size == 0:
-            process_batch(tweets_batch)
-            tweets_batch = []
+            # process_batch(tweets_batch)
+            # tweets_batch = []
             save_processed_users(processed_users, path)
 
         processed_users.add(username)
