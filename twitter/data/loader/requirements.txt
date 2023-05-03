@@ -1,7 +1,7 @@
+ipdb~=0.13.13
+sentence_transformers~=2.2.2
+tqdm~=4.65.0
 pandas~=1.5.3
 vaex~=4.16.0
-sentence_transformers~=2.2.2
-snscrape~=0.6.2.20230320
-ipdb~=0.13.13
 numpy~=1.24.2
-tqdm~=4.65.0
+snscrape~=0.6.2.20230320

@@ -15,6 +15,7 @@ lamma_tokenizer_path = os.path.join(env["llama_tokenizer"], "tokenizer.model")
 
 # train_dataloader, sentences_iterator = get_train_ds_sentences(
 #     size=1000000, batch_size=4, shuffle=True)
+# ipdb.set_trace()
 
 old_tokenizer = LlamaTokenizer.from_pretrained(lamma_tokenizer_path)
 
@@ -31,5 +32,10 @@ unk_id = old_tokenizer.convert_tokens_to_ids(
     old_tokenizer.special_tokens_map["unk_token"])
 
 
-spm.SentencePieceTrainer.train(input=env["tokenizer_input_train"], model_prefix='updated_tokenizer',
+save_directory = env["tokenizer_save_directory"]
+os.makedirs(save_directory, exist_ok=True)
+
+model_name = "tokenizer"
+
+spm.SentencePieceTrainer.train(input=env["tokenizer_input_train"], model_prefix=os.path.join(save_directory, model_name),
                                vocab_size=vocab_size, model_type='bpe', bos_id=bos_id, eos_id=eos_id, unk_id=unk_id, bos_piece=old_tokenizer.special_tokens_map["bos_token"], eos_piece=old_tokenizer.special_tokens_map["eos_token"], unk_piece=old_tokenizer.special_tokens_map["unk_token"])
