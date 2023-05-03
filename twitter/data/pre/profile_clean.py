@@ -39,6 +39,11 @@ def load_processed_users(filepath):
         return pickle.load(f)
 
 
+def save_profile_to_pickle(user, path):
+    with open(path, 'wb') as f:
+        pickle.dump(user, f)
+
+
 def append_to_parquet_file(input_file, new_data):
 
     # if new_data.:
@@ -88,21 +93,63 @@ def process_batch(tweets_batch):
     save_data_to_parquet(group_tweets, "tweets")
 
 
+def get_or_create_user_directory(user_name, is_new_user=False):
+
+    base_dir = env["data"]
+    user_type = "new_users" if is_new_user else "users"
+    user_dir = os.path.join(base_dir, user_type, user_name)
+    os.makedirs(user_dir, exist_ok=True)
+    return user_dir
+
+
+def drop_obj_column(df):
+    return df.drop(
+        columns=['retweetedTweet', 'quotedTweet', 'inReplyToUser', 'mentionedUsers', 'user'], errors='ignore')
+
+
+# saves self user to pickle
+def save_self_user_profiles(user):
+    pass
+
+# saves new user df, it includes tweets that needs to be saved as new_users/{user}/tweets.parquet
+# read the df if existing and updates (no duplicates)
+# then saves the user profile pickle if not exist
+
+
+def save_new_user_profile(user, tweets_df, base_path):
+    user_path = os.path.join(base_path, user['username'])
+
+    # Create user directory if it doesn't exist
+    if not os.path.exists(user_path):
+        os.makedirs(user_path)
+
+    # Save user profile
+    profile_path = os.path.join(user_path, 'profile.pickle')
+    if not os.path.exists(profile_path):
+        save_profile_to_pickle(user, profile_path)
+
+    # Save user tweets
+    tweets_path = os.path.join(user_path, 'tweets.parquet')
+    if os.path.exists(tweets_path):
+        existing_tweets_df = pd.read_parquet(tweets_path)
+        updated_tweets_df = pd.concat(
+            [existing_tweets_df, tweets_df]).drop_duplicates(subset=['id'])
+    else:
+        updated_tweets_df = tweets_df
+    updated_tweets_df.to_parquet(tweets_path)
+
+
 def process_profile(user_df):
 
     # get rewtweetedTweetUserNames
 
-    rt_user_names = user_df['retweetedTweet'].apply(
+    rts = user_df[pd.notnull(user_df['retweetedTweet'])]['retweetedTweet']
+    rt_user_names = rts.apply(
         lambda x: x['user']['username'] if x is not None else None)
-
-    # get quotedTweetUserNames
-
-
-    # qt_user_names = user_df['quotedTweet'].apply(
-    #     lambda x: x['quotedTweet']['user']['username'] if x is not None and 'quotedTweet' in x and x['quotedTweet'] is not None and 'user' in x['quotedTweet'] else None)
 
     not_none_quoted_tweets = user_df[pd.notnull(
         user_df['quotedTweet'])]['quotedTweet']
+
     qt_user_names = not_none_quoted_tweets.apply(
         lambda x: x['user']['username'] if 'user' in x and x['user'] is not None else None)
 
@@ -113,7 +160,6 @@ def process_profile(user_df):
     # get mentionedUserNames
     mt_user_names = user_df['mentionedUsers'].apply(
         lambda x: [user['username'] for user in x] if x is not None else None)
-    
 
     unique_users = user_df.loc[user_df['user'].apply(
         lambda x: x['id']).drop_duplicates().index, 'user']
@@ -123,35 +169,63 @@ def process_profile(user_df):
     path = os.path.join(
         env['sv_path'], self_user['username'], 'user_self.pickle')
 
-    # save user of user_self to a pickle file,
-    # path env['sv_path']/{user_name}/user_self.pickle
+    save_profile_to_pickle(self_user, path)
 
-    def save_user_to_pickle(user, path):
-
-        with open(path, 'wb') as f:
-            pickle.dump(user, f)
-
-    # combine all user names, except self_user
-    # all_user_names = pd.concat(
-    #     [rt_user_names, qt_user_names, ir_user_names, mt_user_names]).drop_duplicates().to_list()
-
-    flat_mt_users = [user for sublist in mt_user_names for user in (sublist if sublist is not None else [])]
+    flat_mt_users = [user for sublist in mt_user_names for user in (
+        sublist if sublist is not None else [])]
 
     all_user_names = pd.concat(
         [rt_user_names, qt_user_names, ir_user_names, pd.Series(flat_mt_users)]
     ).drop_duplicates().to_list()
-    
-    # check if user is in userList
+
     global userList
+
+    # users_not_in_gu = [user for user in all_user_names if user not in userList]
+    # users_in_gu = [user for user in all_user_names if user in userList]
+
+    new_tweets = pd.concat([rts, not_none_quoted_tweets])
+
+    new_tweets['username'] = new_tweets['user'].apply(lambda x: x['username'])
+    new_tweets_not_gu = new_tweets[~new_tweets['username'].isin(userList)]
+
+    grouped_tweets_not_gu = new_tweets_not_gu.groupby('username')
+
+    for username, tweets_df in grouped_tweets_not_gu:
+        user_profile = tweets_df.iloc[0]['user']
+        df = drop_obj_column(id_prepro(tweets_df))
+        save_new_user_profile(
+            user_profile, df, os.path.join(env['data'], 'new_users'))
+
+    # drop new_tweets users that are in gu
+
+    # now, for the users not in gu, I need to
+    # for rts in user_df, set rawContent to None
+
+    user_df.loc[user_df['retweetedTweet'].notnull(), 'rawContent'] = None
+
+    cleaned = drop_obj_column(user_df)
+
     ipdb.set_trace()
 
+    uname = self_user['username']
+    assert uname != None, "Username must be found"
 
-    # check if all_user_names is in userList
-    # all_user_names = [user for user in all_user_names if user not in userList]
+    # rewrite self user tweets, remove retweets.parquet (now merged)
 
+    tw_path = os.path.join(env["data"], "users", uname, "tweets.parquet")
+    rt_path = os.path.join(env["data"], "users", uname, "retweets.parquet")
 
+    if os.path.exists(rt_path):
+        os.remove(rt_path)
 
-    # get all user names
+    cleaned.to_parquet(tw_path)
+    # save cleanded to tweets.parquet
+
+    # if os.path.exists(tw_path):
+    #     os.remove(tw_path)
+
+    # now, the self_user profile needs to get linked to rtw,
+    # get their rts, drop the rawContent column, url, and
 
 
 def process_user(username):

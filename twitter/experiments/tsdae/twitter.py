@@ -1,9 +1,14 @@
+from transformers import AutoTokenizer, AutoModel, LlamaTokenizer
 from ...data.loader.torch import get_train_dataloader, get_train_ds_sentences
 
 from sentence_transformers import SentenceTransformer, LoggingHandler
 from sentence_transformers import models, util, datasets, evaluation, losses
 
-import yerbamate, ipdb, os, logging, tqdm
+import yerbamate
+import ipdb
+import os
+import logging
+import tqdm
 
 from ...trainers.logger.tqdmlogger import TqdmLoggingHandler
 
@@ -12,14 +17,24 @@ env = yerbamate.Environment()
 # Define your sentence transformer model using CLS pooling
 model_name = 'bert-base-multilingual-uncased'
 word_embedding_model = models.Transformer(model_name)
+
+# tokenizer from weights/tokenizer.model
+tokenizer = LlamaTokenizer.from_pretrained(
+    os.path.join(env["weights"], "tokenizer.model"))
+
+word_embedding_model.tokenizer = tokenizer
+
+ipdb.set_trace()
+
 pooling_model = models.Pooling(
     word_embedding_model.get_word_embedding_dimension(), 'cls')
 model = SentenceTransformer(modules=[word_embedding_model, pooling_model])
 # model = model.half()
 
-train_dataloader = get_train_ds_sentences(size=100000,batch_size=4, shuffle=True)
+train_dataloader = get_train_ds_sentences(
+    size=100000, batch_size=4, shuffle=True)
 
-#get_train_dataloader(size=100000,batch_size=4, shuffle=True)
+# get_train_dataloader(size=100000,batch_size=4, shuffle=True)
 
 chkpt_save_steps = 500
 # load model if checkpoint exists
@@ -28,7 +43,7 @@ if env.restart:
     if os.path.exists(os.path.join(env["weights"], 'tsdae-model')):
 
         #   check for latest checkpoint
-        
+
         start = chkpt_save_steps
         while True:
             if os.path.exists(os.path.join(env["weights"], 'tsdae-model', f'{start}')):
@@ -43,19 +58,17 @@ if env.restart:
             # #   set start to next checkpoint
             # start += chkpt_save_steps
             print(f'Loaded model from {last_chkpt}')
-        
+
 
 # Use the denoising auto-encoder loss
 train_loss = losses.DenoisingAutoEncoderLoss(
     model, decoder_name_or_path=model_name, tie_encoder_decoder=True)
 
 
-
-
 # ipdb.set_trace()
 # Call the fit method
 # if env.train:
-    
+
 model.fit(
     train_objectives=[(train_dataloader, train_loss)],
     epochs=1,
