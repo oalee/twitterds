@@ -1,6 +1,5 @@
 from transformers import LlamaTokenizer
 import sentencepiece as spm
-
 # Train a new tokenizer model with the combined data
 from ...data.loader.torch import get_train_ds_sentences
 import os
@@ -22,7 +21,7 @@ old_tokenizer = LlamaTokenizer.from_pretrained(lamma_tokenizer_path)
 # Get special tokens from the old tokenizer
 special_tokens = list(old_tokenizer.special_tokens_map.values())
 
-vocab_size = 12000
+vocab_size = 32000
 
 bos_id = old_tokenizer.convert_tokens_to_ids(
     old_tokenizer.special_tokens_map["bos_token"])
@@ -39,3 +38,5 @@ model_name = "tokenizer"
 
 spm.SentencePieceTrainer.train(input=env["tokenizer_input_train"], model_prefix=os.path.join(save_directory, model_name),
                                vocab_size=vocab_size, model_type='bpe', bos_id=bos_id, eos_id=eos_id, unk_id=unk_id, bos_piece=old_tokenizer.special_tokens_map["bos_token"], eos_piece=old_tokenizer.special_tokens_map["eos_token"], unk_piece=old_tokenizer.special_tokens_map["unk_token"])
+
+

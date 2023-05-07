@@ -26,7 +26,6 @@ def save_processed_users(processed_users, filepath=p_path):
     with open(filepath, 'wb') as f:
         pickle.dump(processed_users, f)
 
-    # print("Saved processed users to:", filepath)
 
 
 def load_processed_users(filepath=p_path):

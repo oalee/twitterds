@@ -133,6 +133,9 @@ def save_new_user_profile(user, tweets_df, base_path):
     tweets_path = os.path.join(user_path, 'tweets.parquet')
 
     # append if exist, use fp to write parquet
+
+    
+
     if os.path.exists(tweets_path):
         existing_tweets_df = pd.read_parquet(tweets_path)
         updated_tweets_df = pd.concat(

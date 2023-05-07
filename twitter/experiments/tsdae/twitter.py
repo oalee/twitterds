@@ -1,4 +1,3 @@
-from transformers import AutoTokenizer, AutoModel, LlamaTokenizer
 from ...data.loader.torch import get_train_dataloader, get_train_ds_sentences
 
 from sentence_transformers import SentenceTransformer, LoggingHandler
@@ -12,29 +11,25 @@ import tqdm
 
 from ...trainers.logger.tqdmlogger import TqdmLoggingHandler
 
+
 env = yerbamate.Environment()
 
 # Define your sentence transformer model using CLS pooling
 model_name = 'bert-base-multilingual-uncased'
 word_embedding_model = models.Transformer(model_name)
 
-# tokenizer from weights/tokenizer.model
-tokenizer = LlamaTokenizer.from_pretrained(
-    os.path.join(env["weights"], "tokenizer.model"))
 
-word_embedding_model.tokenizer = tokenizer
-
-ipdb.set_trace()
-
+# user a fast tokenizer to update the vocab based on the new dat
 pooling_model = models.Pooling(
     word_embedding_model.get_word_embedding_dimension(), 'cls')
 model = SentenceTransformer(modules=[word_embedding_model, pooling_model])
 # model = model.half()
 
-train_dataloader = get_train_ds_sentences(
-    size=100000, batch_size=4, shuffle=True)
+size = 100_000_000
+batch_size = 128
 
-# get_train_dataloader(size=100000,batch_size=4, shuffle=True)
+train_dataloader, _ = get_train_ds_sentences(
+    size=size, batch_size=batch_size, shuffle=True)
 
 chkpt_save_steps = 500
 # load model if checkpoint exists
@@ -71,7 +66,7 @@ train_loss = losses.DenoisingAutoEncoderLoss(
 
 model.fit(
     train_objectives=[(train_dataloader, train_loss)],
-    epochs=1,
+    epochs=10,
     weight_decay=0.01,
     scheduler='constantlr',
     optimizer_params={'lr': 3e-4},

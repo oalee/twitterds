@@ -35,6 +35,7 @@ old_tokenizer.save_vocabulary(save_directory=os.path.dirname(
 ipdb.set_trace()
 
 # Create a new tokenizer using the old vocab and merge files
+
 tokenizer = Tokenizer(BPE.from_file(vocab_file_path, merges_file_path))
 tokenizer.pre_tokenizer = pre_tokenizers.ByteLevel()
 tokenizer.decoder = decoders.ByteLevel()
