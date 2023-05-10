@@ -1,4 +1,5 @@
 import concurrent
+import shutil
 from .id_clean_prepro import id_prepro
 from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
 import pickle
@@ -198,23 +199,29 @@ def process_profile(username, user_df):
     new_tweets = pd.concat([rts, not_none_quoted_tweets])
     new_tweets = new_tweets.apply(pd.Series)
 
+    # ipdb.set_trace()
+
     # if new_tweets is not empty, process
-    if not new_tweets.empty:
-        new_tweets = new_tweets.dropna(subset=['user'])
-        new_tweets['username'] = new_tweets['user'].apply(
-            lambda x: x['username'])
+    try:
+        if not new_tweets.empty:
+            new_tweets = new_tweets.dropna(subset=['user'])
+            new_tweets['username'] = new_tweets['user'].apply(
+                lambda x: x['username'])
 
-        new_tweets_not_gu = new_tweets[~new_tweets['username'].isin(userList)]
-        grouped_tweets_not_gu = new_tweets_not_gu.groupby('username')
+            new_tweets_not_gu = new_tweets[~new_tweets['username'].isin(userList)]
+            grouped_tweets_not_gu = new_tweets_not_gu.groupby('username')
 
-        for _, tweets_df in grouped_tweets_not_gu:
-            user_profile = tweets_df.iloc[0]['user']
-            df = drop_obj_column(id_prepro(tweets_df))
-            # drop username column
-            df.drop(columns=['username'], inplace=True)
-            save_new_user_profile(
-                user_profile, df, os.path.join(env['data'], 'new_users'))
+            for _, tweets_df in grouped_tweets_not_gu:
+                user_profile = tweets_df.iloc[0]['user']
+                df = drop_obj_column(id_prepro(tweets_df))
+                # drop username column
+                df.drop(columns=['username'], inplace=True)
+                save_new_user_profile(
+                    user_profile, df, os.path.join(env['data'], 'new_users'))
 
+    except Exception as e:
+        print(e)
+        # ipdb.set_trace()
     # drop new_tweets users that are in gu
 
     # now, for the users not in gu, I need to
@@ -247,8 +254,8 @@ def process_profile(username, user_df):
     # get their rts, drop the rawContent column, url, and
 
 
-def process_user(args):
-    username, idx = args
+def process_user(username):
+    # username, idx = args
     user_df = get_user(username)
 
     if user_df is None or user_df.empty:
@@ -277,7 +284,61 @@ def process_user(args):
     # retweets = user_df[user_df['retweetedTweetId'].notnull()]
     # tweets = user_df[user_df['retweetedTweetId'].isnull()]
 
-    return idx, profiles  # tweets, retweets
+    return profiles  # tweets, retweets
+
+
+def check_cleaned_user(username):
+    path = os.path.join(env['data'], 'users', username, 'tweets.parquet')
+
+    # if empty tweets, then delete file
+    if os.path.exists(path) and os.path.getsize(path) == 0:
+        os.remove(path)
+
+    if not os.path.exists(path):
+        path = os.path.join(env['data'], 'users', username, 'retweets.parquet')
+
+        # if empty, then delete folder
+        if not os.path.exists(path) or os.path.getsize(path) == 0:
+            shutil.rmtree(os.path.join(env['data'], 'users', username))
+            print("Deleted empty user: ", username)
+            return True
+
+    df = vaex.open(path)
+
+    # if card in columns, then it's not cleaned
+    if 'card' in df.columns:
+        return False
+    else:
+        return True
+
+
+def get_unprocessed_users():
+
+    # checks if the user has been processed with ckeck_cleaned_user
+    # if not, then it's a new user
+
+    users_list = get_userlist()
+
+    # make this tqdm
+    unprocessed_users = []
+    for user in tqdm.tqdm(users_list):
+        if not check_cleaned_user(user):
+            unprocessed_users.append(user)
+    # unprocessed_users = [
+    #     user for user in users_list if not check_cleaned_user(user)]
+
+    return unprocessed_users
+
+
+def clean_again():
+
+    unproccessed_users = get_unprocessed_users()
+
+    # ipdb.set_trace()
+
+    for user in tqdm.tqdm(unproccessed_users):
+        print("Processing user: ", user)
+        process_user(user)
 
 
 def extract():
@@ -298,14 +359,15 @@ def extract():
     # handle the case where the process was interrupted
 
     with ProcessPoolExecutor(max_workers=process_size) as executor:
-        futures = {executor.submit(process_user, (username, idx)): idx for idx, username in enumerate(unprocessed_users)}
+        futures = {executor.submit(process_user, (username, idx))
+                                   : idx for idx, username in enumerate(unprocessed_users)}
         for future in tqdm.tqdm(concurrent.futures.as_completed(futures), total=len(unprocessed_users)):
             idx = futures[future]
             try:
                 result_idx, profiles = future.result()
                 assert idx == result_idx
 
-                    # if profiles is not None:
+                # if profiles is not None:
                 # if profiles is not None:
                 #     tweets_batch.append(profiles)
                 # print("Processed user: ", unprocessed_users[idx])
@@ -319,6 +381,7 @@ def extract():
 
             except Exception as e:
                 print(f"Error processing user at index {idx}: {e}")
+                ipdb.set_trace()
 
     # for idx, username in tqdm.tqdm(enumerate(unprocessed_users), total=len(unprocessed_users)):
 
@@ -340,4 +403,5 @@ def extract():
 
 
 if __name__ == "__main__":
-    extract()
+    clean_again()
+    # extract()

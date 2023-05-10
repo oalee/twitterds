@@ -32,6 +32,22 @@ def get_random_user():
     return get_user(user)
 
 
+def get_cleaned_user(user_name):
+
+    path = os.path.join(env["data"], "users", user_name)
+
+    df = None
+
+    # check if tweets exist
+    if os.path.exists(os.path.join(path, "tweets.parquet")):
+        # check if not empty
+        try:
+            df = pd.read_parquet(os.path.join(path, "tweets.parquet"))
+        except:
+            df = None
+    return df
+
+
 def get_user(user_name):
 
     path = os.path.join(env["data"], "users", user_name)
