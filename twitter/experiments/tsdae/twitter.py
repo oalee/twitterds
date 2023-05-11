@@ -1,7 +1,9 @@
+import torch
 from ...data.loader.torch import get_train_dataloader, get_train_ds_sentences
 
 from sentence_transformers import SentenceTransformer, LoggingHandler
 from sentence_transformers import models, util, datasets, evaluation, losses
+from transformers import AutoTokenizer, AutoModel
 
 import yerbamate
 import ipdb
@@ -10,6 +12,7 @@ import logging
 import tqdm
 
 from ...trainers.logger.tqdmlogger import TqdmLoggingHandler
+from torch.utils.data import DataLoader
 
 
 env = yerbamate.Environment()
@@ -18,6 +21,8 @@ env = yerbamate.Environment()
 model_name = 'bert-base-multilingual-uncased'
 word_embedding_model = models.Transformer(model_name)
 
+tokenizer = AutoTokenizer.from_pretrained('./tokenizer-bert-updated')
+word_embedding_model.tokenizer = tokenizer
 
 # user a fast tokenizer to update the vocab based on the new dat
 pooling_model = models.Pooling(
@@ -25,11 +30,26 @@ pooling_model = models.Pooling(
 model = SentenceTransformer(modules=[word_embedding_model, pooling_model])
 # model = model.half()
 
-size = 100_000_000
-batch_size = 128
+# size = 100_000_000
+batch_size = 3
 
-train_dataloader, _ = get_train_ds_sentences(
-    size=size, batch_size=batch_size, shuffle=True)
+# train_dataloader, _ = get_train_ds_sentences(
+#     size=size, batch_size=batch_size, shuffle=True)
+
+root_data = os.path.join(env["data"], 'tweets')
+
+train_files = os.listdir(root_data)
+# join with root_data
+train_files = [os.path.join(root_data, file) for file in train_files]
+
+train_dataset = datasets.ListedDenoisingAutoEncoderDataset(train_files)
+
+# ipdb.set_trace()
+
+print(f'\n\nTraining on {len(train_dataset)} tweets.\n\n')
+
+train_dataloader = DataLoader(
+    train_dataset, shuffle=False, batch_size=batch_size)
 
 chkpt_save_steps = 500
 # load model if checkpoint exists
@@ -66,13 +86,14 @@ train_loss = losses.DenoisingAutoEncoderLoss(
 
 model.fit(
     train_objectives=[(train_dataloader, train_loss)],
-    epochs=10,
+    epochs=1,
     weight_decay=0.01,
     scheduler='constantlr',
     optimizer_params={'lr': 3e-4},
     show_progress_bar=True,
     checkpoint_path=os.path.join(env["weights"], 'tsdae-model'),
     checkpoint_save_steps=chkpt_save_steps,
+    output_path=os.path.join(env["weights"], 'tsdae-model', 'output'),
     # callback=LoggingHandler()
     # logger=logger
 
