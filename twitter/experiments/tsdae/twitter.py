@@ -31,7 +31,9 @@ model = SentenceTransformer(modules=[word_embedding_model, pooling_model])
 # model = model.half()
 
 # size = 100_000_000
-batch_size = 3
+batch_size = env["batch_size"]
+
+# if batch_size == None:
 
 # train_dataloader, _ = get_train_ds_sentences(
 #     size=size, batch_size=batch_size, shuffle=True)
@@ -41,6 +43,10 @@ root_data = os.path.join(env["data"], 'tweets')
 train_files = os.listdir(root_data)
 # join with root_data
 train_files = [os.path.join(root_data, file) for file in train_files]
+
+print(f'\n\nFound {len(train_files)} files.\n\n')
+
+print(f'\n\nLoading dataset.\n\n')
 
 train_dataset = datasets.ListedDenoisingAutoEncoderDataset(train_files)
 
