@@ -94,7 +94,7 @@ model.fit(
     train_objectives=[(train_dataloader, train_loss)],
     epochs=1,
     weight_decay=0.01,
-    scheduler='constantlr',
+    scheduler='warmupLinear',
     optimizer_params={'lr': 3e-4},
     show_progress_bar=True,
     checkpoint_path=os.path.join(env["weights"], 'tsdae-model'),
