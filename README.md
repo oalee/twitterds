@@ -1,6 +1,6 @@
-# Twitter Data Science Project
+# Propaganda Analysis and Twitter Data Science Project
 
-This repository hosts to code for the Twitter Data Science Project. Built with [Maté](https://github.com/ilex-paraguariensis/yerbamate)
+ Built with [Maté](https://github.com/ilex-paraguariensis/yerbamate)
 
 ## Installation
 You can use Maté to install code modules from this list (or just simply clone, copy paste and install requirements.txt inside the modules):
