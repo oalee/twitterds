@@ -10,12 +10,15 @@ import ipdb
 import os
 import logging
 import tqdm
+import numpy as np
 
 from ...trainers.logger.tqdmlogger import TqdmLoggingHandler
 from torch.utils.data import DataLoader
 
 
 env = yerbamate.Environment()
+
+env.print_info()
 
 # Define your sentence transformer model using CLS pooling
 model_name = 'bert-base-multilingual-uncased'
@@ -44,11 +47,29 @@ train_files = os.listdir(root_data)
 # join with root_data
 train_files = [os.path.join(root_data, file) for file in train_files]
 
-print(f'\n\nFound {len(train_files)} files.\n\n')
+# print(f'\n\nFound {len(train_files)} files.\n\n')
 
 print(f'\n\nLoading dataset.\n\n')
 
-train_dataset = datasets.ListedDenoisingAutoEncoderDataset(train_files)
+
+def noise_fn(text, del_ratio=0.6):
+    words = tokenizer.tokenize(text)
+    n = len(words)
+    if n == 0:
+        return text
+
+    keep_or_not = np.random.rand(n) > del_ratio
+    if sum(keep_or_not) == 0:
+        keep_or_not[np.random.choice(n)] = True
+    words = np.array(words)[keep_or_not]
+    words_processed = tokenizer.convert_tokens_to_string(words)
+    return words_processed
+
+
+train_dataset = datasets.ListedDenoisingAutoEncoderDataset(
+    train_files, noise_fn=noise_fn)
+
+# print(f'\n\nDataset loaded.\n\n')
 
 # ipdb.set_trace()
 
@@ -94,7 +115,7 @@ model.fit(
     train_objectives=[(train_dataloader, train_loss)],
     epochs=1,
     weight_decay=0.01,
-    scheduler='warmupLinear',
+    scheduler='WarmupLinear',
     optimizer_params={'lr': 3e-4},
     show_progress_bar=True,
     checkpoint_path=os.path.join(env["weights"], 'tsdae-model'),
