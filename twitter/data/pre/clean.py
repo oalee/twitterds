@@ -1,23 +1,20 @@
-import pandas as pd
-
-import yerbamate
-import ipdb
-import os, tqdm
-
-env = yerbamate.Environment()
+import re
 
 
-path = os.path.join(env["data"], "tweets")
+def clean_tweet(text):
+    # Remove mentions
+    text = re.sub(r"@\w+", "", text)
 
-dirs = os.listdir(path)
+    # Remove URLs
+    text = re.sub(r"http\S+|https\S+", "", text)
 
-for d in tqdm.tqdm(dirs):
-    # check if empty
-    # first check if size is less than 10kb
-    if os.stat(os.path.join(path, d)).st_size < 10000:
+    # Remove newlines
+    text = text.replace("\n", " ")
 
-        df = pd.read_parquet(os.path.join(path, d))
-        if df.size == 0:
-            # ipdb.set_trace()
-            os.remove(os.path.join(path, d))
-            print("Removed:", os.path.join(path, d))
+    # Remove extra whitespaces
+    text = re.sub(r"\s+", " ", text).strip()
+
+    # Remove "RT :"
+    text = re.sub(r"RT :", "", text)
+
+    return text
