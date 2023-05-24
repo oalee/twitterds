@@ -1,0 +1,23 @@
+{
+  "dependencies": {
+    "chatgpt": "^5.2.4",
+    "labelr": "^0.0.1"
+  },
+  "name": "twitter",
+  "description": "Built with [Maté](https://github.com/ilex-paraguariensis/yerbamate)",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/oalee/twitterds.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/oalee/twitterds/issues"
+  },
+  "homepage": "https://github.com/oalee/twitterds#readme"
+}
