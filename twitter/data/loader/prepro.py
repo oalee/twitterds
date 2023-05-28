@@ -32,6 +32,7 @@ def get_random_user():
     return get_user(user)
 
 
+
 def get_cleaned_user(user_name):
 
     path = os.path.join(env["data"], "users", user_name)
