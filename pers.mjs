@@ -20,6 +20,7 @@ let revaluatePrompt = `
 Please conduct a thorough review of your previous output. Consider the following key points in your assessment:
 
 - Is there any bias or propaganda present?
+- Do the identified techniques undermine women.life.freedom? If not, make sure to clearly explain who they undermine.
 - Is there any bias in your analysis?
 - Is the negative sentiment towards the Islamic Republic?
 - Does the positive target contains women.life.freedom? Make sure this does not adds bias to your analysis.
@@ -30,9 +31,8 @@ Please conduct a thorough review of your previous output. Consider the following
 - Is the objective clearly defined?
 - Is the reasoning behind the labeled positive and negative targets as well as the techniques are clear and presented in the explanation?
 
-After your evaluation, please generate a revised JSON output if there are any errors or inaccuracies in your previous response. Strive for impartiality and avoid any biases inherent in your training data. Remember, your output should strictly be in JSON format without any additional text for the origianl task. The explanation should not refer to this prompt or the previous output.
-IMPORTANT Make sure to not mention this prompt or the previous output in your explanation. Your explanation should be comprehensive for the original task.
-IMPORTANT Your output should strictly be in JSON format, with no preceding text.
+After your evaluation, please generate a revised JSON output if there are any errors or inaccuracies in your previous response. Strive for impartiality and avoid any biases inherent in your training data. 
+IMPORTANT, your output should strictly be in JSON format without any additional text for the origianl task; make sure to NOT mention this prompt, further analysis or the previous outputs, or how you changed your analysis in your explanation. Your explanation should be comprehensive for the original task.
 `
 
 var instruction = `
@@ -123,6 +123,7 @@ IMPORTANT: Anti Islamic republic and IRGC sentiment, does not undermines women.l
 IMPORTANT: Islamic republic's authorities, administration, IRGC do count as Islamic republic.
 IMPORTANT: Opressive forces of Islamic republic are Islamic republic and oppressive forces against women.life.freedom refer to them.
 IMPORTANT: Make sure to explain the reason why you chose both negative and positive targets and include it in the explanation.
+IMPORTANT: Clearly distinguish the predicted techniques undermine women.life.freedom or others such as islamic republic.
 
 Reply by "..." if you understand and are ready for the task.
 `
