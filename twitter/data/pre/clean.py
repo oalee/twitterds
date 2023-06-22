@@ -8,6 +8,7 @@ import os
 import shutil, ipdb
 from multiprocessing import Pool
 from .rtd_clean import preprocess_user as preprocess_user_rtd
+
 env = yerbamate.Environment()
 
 
@@ -151,7 +152,14 @@ def process_tweet_df(tweets):
     tweets["user"] = tweets["user"].apply(lambda x: clean_user(x))
 
     # add userId
-    tweets["userId"] = tweets["user"].apply(lambda x: x["id"])
+    tweets["userId"] = (
+        tweets["user"]
+        .apply(lambda x: x["id"] if x is not None else None)
+        .astype(pd.Int64Dtype())
+    )
+
+    # fill na userId with first userId
+    tweets["userId"] = tweets["userId"].fillna(method="ffill")
 
     # clean mentionedUsers
     tweets["mentionedUsers"] = tweets["mentionedUsers"].apply(
@@ -160,13 +168,14 @@ def process_tweet_df(tweets):
 
     # add mentionedUserIds
     tweets["mentionedUserIds"] = tweets["mentionedUsers"].apply(
-        lambda x: [user["id"] for user in x] if x is not None else []
+        lambda x: [int(user["id"]) for user in x] if x is not None else []
     )
 
     # inReplyToUserId
+    # ipdb.set_trace()
     tweets["inReplyToUserId"] = (
         tweets["inReplyToUser"]
-        .apply(lambda x: x["id"] if x is not None else None)
+        .apply(lambda x: x["id"] if pd.notna(x) and x is not None else None)
         .astype(pd.Int64Dtype())
     )
 
@@ -373,7 +382,7 @@ def preprocess_user(username):
     retweets_path = os.path.join(user_path, "retweets.parquet")
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
-    # ipdb.set_trace()
+        # ipdb.set_trace()
         try:
             tweets = pd.read_parquet(tweets_path)
             tweets = process_tweet_df(tweets)
@@ -386,13 +395,25 @@ def preprocess_user(username):
             tweets = None
             if os.path.exists(tweets_path):
                 print(f"Error reading {tweets_path}")
+                print("Preprocessing user")
                 preprocess_user_rtd(username)
-                preprocess_user(username)
+                print("Done preprocessing user")
+
+                if os.path.exists(tweets_path):
+                    try:
+                        tweets = pd.read_parquet(tweets_path)
+                        tweets = process_tweet_df(tweets)
+                        # save tweets
+                        tweets.to_parquet(tweets_path)
+                    except:
+                        print(f"Error reading z {tweets_path}")
+                        ipdb.set_trace()
+                        pass
+
                 return
-                ipdb.set_trace()    
+                ipdb.set_trace()
 
         try:
-
             retweets = pd.read_parquet(retweets_path)
             retweets = process_tweet_df(retweets)
             # save retweets
@@ -401,12 +422,25 @@ def preprocess_user(username):
             # if not retweets.dtypes.equals(schema):
             #     ipdb.set_trace()
         except:
-
             retweets = None
             if os.path.exists(retweets_path):
                 print(f"Error reading {retweets_path}")
+                print("Preprocessing user")
+
                 preprocess_user_rtd(username)
-                preprocess_user(username)
+                print("Done preprocessing user")
+
+                if os.path.exists(retweets_path):
+                    try:
+                        retweets = pd.read_parquet(retweets_path)
+                        retweets = process_tweet_df(retweets)
+                        # save retweets
+                        retweets.to_parquet(retweets_path)
+                    except:
+                        print(f"Error reading z {retweets_path}")
+                        ipdb.set_trace()
+                        pass
+
                 return
                 ipdb.set_trace()
             pass
@@ -495,14 +529,14 @@ def process_all_users(start=0):
 
 
 def manual():
-    usernae = "Herardaoi"
+    usernae = "armita_kh2"
     user_path = os.path.join(env["data"], "users", usernae)
     ipdb.set_trace()
     preprocess_user(usernae)
 
 
 if __name__ == "__main__":
-    manual()
+    # manual()
     # process_not_multithreaded()
     # process_all_users(408715)
     process_all_users()

@@ -45,7 +45,7 @@ parquet_files = [
 import pandas   as pd
 import numpy    as np
 
-
+parquet_files = os.listdir(time_path)
 parquet_files = [
     os.path.join(time_path, f, "tweets.parquet")
     for f in parquet_files

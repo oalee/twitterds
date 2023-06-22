@@ -150,7 +150,6 @@ def preprocess_user(username):
         print(f"Removed user: {username}")
         return None
 
- 
     na_retweets = retweets[retweets["retweetedTweet"].isna()]
     if not na_retweets.empty:
         # print("Fixing retweets.parquet")
@@ -184,27 +183,19 @@ def preprocess_user(username):
         # check if tweets is empty
     if tweets.empty:
         # remove tweets.parquet if exists
-        # if os.path.exists(tweets_path):
-        #     os.remove(tweets_path)
-
-        # check if retweets has column card, if do, apply_tweet_cleaning
-        if "card" in retweets.columns:
-            retweets = apply_tweet_cleaning(retweets)
-
-        retweets.to_parquet(retweets_path)
+        if os.path.exists(tweets_path):
+            os.remove(tweets_path)
+            print(f"Removed tweets.parquet for user: {username}")
 
         return retweets["user"].iloc[0]
     else:
         # check if 'card' in tweets.columns, if do, apply_tweet_cleaning
-        if "card" in tweets.columns:
-            tweets = apply_tweet_cleaning(tweets)
 
-            tweets.to_parquet(tweets_path)
-
-        if "card" in retweets.columns:
-            retweets = apply_tweet_cleaning(retweets)
-
-            retweets.to_parquet(retweets_path)
+        if retweets.empty:
+            # remove retweets.parquet if exists
+            if os.path.exists(retweets_path):
+                os.remove(retweets_path)
+                print(f"Removed retweets.parquet for user: {username}")
 
         # check if it has quotedTweet, and if one of them is not empty, and has 'card' in it, apply_tweet_cleaning
         # check if there is one quotedTweet that is not None
