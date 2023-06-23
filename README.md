@@ -2,7 +2,12 @@
 
  Built with [Maté](https://github.com/ilex-paraguariensis/yerbamate)
 
-## Installation
+## Usage
+```bash
+# Install the module
+mate install oalee/twitterds/twitter/models/tsdae 
+python -m twitter.data.scrape.download get
+```
 You can use Maté to install code modules from this list (or just simply clone, copy paste and install requirements.txt inside the modules):
 
 |    | type        | name      | url                                                                        | short_url                                     | dependencies                                                                                                                                                                                                                                                                                                                  |
@@ -18,11 +23,4 @@ You can use Maté to install code modules from this list (or just simply clone, 
 | 8  | data        | pre       | https://github.com/oalee/twitterds/tree/main/twitter/data/pre              | oalee/twitterds/twitter/data/pre              | ['pandas~=1.5.3', 'vaex~=4.16.0', 'ipdb~=0.13.13', 'dask~=2023.3.2', 'tqdm~=4.65.0']                                                                                                                                                                                                                                          |
 | 9  | trainers    | logger    | https://github.com/oalee/twitterds/tree/main/twitter/trainers/logger       | oalee/twitterds/twitter/trainers/logger       | ['tqdm~=4.65.0']                                                                                                                                                                                                                                                                                                              |
 | 10 | analyze     | topic     | https://github.com/oalee/twitterds/tree/main/twitter/analyze/topic         | oalee/twitterds/twitter/analyze/topic         | ['umap_learn~=0.5.3', 'sentence_transformers~=2.2.2', 'pandas~=1.5.3', 'ipdb~=0.13.13', 'bertopic~=0.14.1', 'hdbscan~=0.8.29', 'https://github.com/oalee/twitterds/tree/main/twitter/data/loader']                                                                                                                            |
-
-## Usage
-```bash
-# Install the module
-mate install oalee/twitterds/twitter/data/scrape
-python -m twitter.data.scrape.download get
-```
 
