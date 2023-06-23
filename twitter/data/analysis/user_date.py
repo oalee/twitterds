@@ -47,35 +47,42 @@ parquet_df = parquet_df.dropDuplicates(["userId"])
 parquet_df = parquet_df.withColumnRenamed("user.created", "created")
 
 
-# First, group by year and plot
-year_df = (
-    parquet_df.groupBy(
-        year(col("created")).alias("year"),
-    )
-    .count()
-    .orderBy("year")
-)
-
-pandas_df_year = year_df.toPandas()
-
-pandas_df_year.plot(x="year", y="count", kind="bar")
-plt.title("Distribution of Users Creation Date by Year")
-plt.xlabel("Year")
-plt.ylabel("Count")
-# plt.show()?
-
-
 save_path = os.path.join(env["plots"], "analysis", "user_date")
 
-if not os.path.exists(save_path):
-    os.makedirs(save_path, exist_ok=True)
 
-# save plot for year
-pandas_df_year.plot(x="year", y="count", kind="bar")
+# # First, group by year and plot
+# year_df = (
+#     parquet_df.groupBy(
+#         year(col("created")).alias("year"),
+#     )
+#     .count()
+#     .orderBy("year")
+# )
+
+# pandas_df_year = year_df.toPandas()
+
+# pandas_df_year.plot(x="year", y="count", kind="bar")
 # plt.title("Distribution of Users Creation Date by Year")
 # plt.xlabel("Year")
 # plt.ylabel("Count")
-plt.savefig(os.path.join(save_path, "user_date_year.png"))
+# plt.xticks(rotation=45)
+
+
+
+# if not os.path.exists(save_path):
+#     os.makedirs(save_path, exist_ok=True)
+
+# # save plot for year
+# # pandas_df_year.plot(x="year", y="count", kind="bar")
+# # plt.title("Distribution of Users Creation Date by Year")
+# # plt.xlabel("Year")
+# # plt.ylabel("Count")
+# plt.margins(x=0.05)
+
+# plt.savefig(os.path.join(save_path, "user_date_year.png"))
+
+# # save csv for year
+# pandas_df_year.to_csv(os.path.join(save_path, "user_date_year.csv"))
 
 # Then, filter for users created after 2022, group by year and month, and plot
 parquet_df_after_2022 = parquet_df.filter(year(col("created")) > 2021)
@@ -91,6 +98,9 @@ year_month_df = (
 
 pandas_df_year_month = year_month_df.toPandas()
 
+# save csv for year and month
+pandas_df_year_month.to_csv(os.path.join(save_path, "user_date_year_month.csv"))
+
 # To plot data with both year and month, you could concatenate the year and month columns into a single column
 pandas_df_year_month["year_month"] = (
     pandas_df_year_month["year"].astype(str)
@@ -103,6 +113,8 @@ plt.title("Distribution of Users Creation Date by Year and Month (after 2022)")
 plt.xlabel("Year-Month")
 plt.ylabel("Count")
 plt.xticks(rotation=45)
+plt.margins(x=0.15)
+plt.subplots_adjust(bottom=0.3, left=0.1, right=0.9, top=0.9)
 # plt.show()
 
 # save plot for year and month
