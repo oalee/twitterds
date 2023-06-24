@@ -1,9 +1,10 @@
-vaex>=4.16.0
-dask>=2023.3.2
 matplotlib>=3.7.1
 pandas>=1.5.3
-python_bidi>=0.4.2
 pyspark>=3.4.0
-arabic_reshaper>=3.0.0
-numpy>=1.24.3
 ipdb>=0.13.13
+vaex>=4.16.0
+dask>=2023.3.2
+numpy>=1.24.3
+-e git+ssh://git@github.com/ilex-paraguariensis/yerbamate.git@b53e93b46537e7de75c8c8cd42f142cfabbaf96b#egg=yerbamate
+python_bidi>=0.4.2
+arabic_reshaper>=3.0.0

@@ -1,7 +1,8 @@
 --extra-index-url https://download.pytorch.org/whl/torch_stable.html
-transformers>=4.28.1
-sentencepiece>=0.1.97
 torch>=2.0.0
 tokenizers>=0.13.3
-tqdm>=4.65.0
+-e git+ssh://git@github.com/oalee/sentence-transformers.git@1c2c90b8ce6812fae491944129d10e73a6009f69#egg=sentence_transformers
 ipdb>=0.13.13
+tqdm>=4.65.0
+-e git+ssh://git@github.com/ilex-paraguariensis/yerbamate.git@b53e93b46537e7de75c8c8cd42f142cfabbaf96b#egg=yerbamate
+sentencepiece>=0.1.97

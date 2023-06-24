@@ -1,4 +1,5 @@
-vaex>=4.16.0
-requests>=2.29.0
-tqdm>=4.65.0
 ipdb>=0.13.13
+requests>=2.29.0
+vaex>=4.16.0
+tqdm>=4.65.0
+-e git+ssh://git@github.com/ilex-paraguariensis/yerbamate.git@b53e93b46537e7de75c8c8cd42f142cfabbaf96b#egg=yerbamate
