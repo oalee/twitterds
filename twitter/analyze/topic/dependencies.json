@@ -1,6 +1,0 @@
-{
-    "dependencies": [
-        "https://github.com/oalee/twitterds/tree/main/twitter/data/loader"
-    ],
-    "env": {}
-}

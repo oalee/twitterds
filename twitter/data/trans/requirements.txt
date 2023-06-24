@@ -1,5 +1,0 @@
-google_cloud_translate>=3.11.1
-googletrans>=4.0.0rc1
-ipdb>=0.13.13
-tqdm>=4.65.0
--e git+ssh://git@github.com/ilex-paraguariensis/yerbamate.git@b53e93b46537e7de75c8c8cd42f142cfabbaf96b#egg=yerbamate

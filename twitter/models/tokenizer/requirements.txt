@@ -1,2 +1,2 @@
-sentencepiece>=0.1.97
 -e git+ssh://git@github.com/oalee/sentence-transformers.git@1c2c90b8ce6812fae491944129d10e73a6009f69#egg=sentence_transformers
+sentencepiece>=0.1.97
