@@ -1,27 +1,3 @@
-# Propaganda Analysis and Twitter Data Science Project
-
- Built with [Maté](https://github.com/ilex-paraguariensis/yerbamate)
-
-## Installation
-Clone the repository and install the requirements:
-```bash
-git clone {ssh,https}://github.com/oalee/twitterds.git
-cd twitterds
-pip install -r requirements.txt
-```
-
-Or install the module with Maté:
-```bash
-mate install oalee/twitterds
-```
-
-## Usage and Module Installation
-```bash
-# Install the module
-mate install oalee/twitterds/twitter/models/tsdae 
-python -m twitter.data.scrape.download get
-```
-You can use Maté to install code modules from this list   
 |    | type           | name           | url                                                                                | short_url                                             | dependencies                                                                                                                                                                                                                                                                                                                                 |
 |----|----------------|----------------|------------------------------------------------------------------------------------|-------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | 0  | experiments    | tsdae          | https://github.com/oalee/twitterds/tree/main/twitter/experiments/tsdae             | oalee/twitterds/twitter/experiments/tsdae             | ['--extra-index-url https://download.pytorch.org/whl/torch_stable.html', 'transformers>=4.28.1', 'torch>=2.0.0', 'numpy>=1.24.3', 'tqdm>=4.65.0', 'ipdb>=0.13.13', 'https://github.com/oalee/twitterds/tree/main/twitter/trainers/logger', 'https://github.com/oalee/twitterds/tree/main/twitter/data/loader']                               |

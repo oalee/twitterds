@@ -1,0 +1,4 @@
+google_cloud_translate>=3.11.1
+googletrans>=4.0.0rc1
+tqdm>=4.65.0
+ipdb>=0.13.13

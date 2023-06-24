@@ -1,8 +1,7 @@
 --extra-index-url https://download.pytorch.org/whl/torch_stable.html
-ipdb~=0.13.13
-tokenizers~=0.12.1
-tqdm~=4.65.0
-torch~=2.0.0
-transformers~=4.28.1
-sentence_transformers~=2.2.2
-sentencepiece~=0.1.97
+transformers>=4.28.1
+sentencepiece>=0.1.97
+torch>=2.0.0
+tokenizers>=0.13.3
+tqdm>=4.65.0
+ipdb>=0.13.13

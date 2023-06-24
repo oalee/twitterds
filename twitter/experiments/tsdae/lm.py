@@ -29,7 +29,7 @@ class CustomDenoisingAutoEncoderLoss(losses.DenoisingAutoEncoderLoss):
 # Define your sentence transformer model using CLS pooling
 model_name = 'bert-base-multilingual-uncased'
 
-tokenizer = 
+# tokenizer = 
 word_embedding_model = models.Transformer(model_name)
 
 
