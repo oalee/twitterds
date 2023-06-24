@@ -9,6 +9,7 @@ __pycache__/
 
 
 twitter/**/*.html 
+twitter/**/*.mp4
 *.ipynb_checkpoints
 
 
