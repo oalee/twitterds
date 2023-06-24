@@ -34,3 +34,37 @@ def get_tweets_session(columns):
 
     parquet_df = spark.read.parquet(*parquet_files).select(*columns)
     return parquet_df
+
+
+def get_retweets_session(columns):
+    parquet_files = os.listdir(users_path)
+    parquet_files = [
+        os.path.join(users_path, f, "retweets.parquet")
+        for f in parquet_files
+        if os.path.exists(os.path.join(users_path, f, "retweets.parquet"))
+    ]
+
+    parquet_df = spark.read.parquet(*parquet_files).select(*columns)
+    return parquet_df
+
+
+def get_tweets_and_retweets_session(columns):
+    parquet_files = os.listdir(users_path)
+
+    parquet_files = [
+        os.path.join(users_path, f, "tweets.parquet")
+        for f in parquet_files
+        if os.path.exists(os.path.join(users_path, f, "tweets.parquet"))
+    ]
+
+    # also retweets
+    parquet_files.extend(
+        [
+            os.path.join(users_path, f, "retweets.parquet")
+            for f in parquet_files
+            if os.path.exists(os.path.join(users_path, f, "retweets.parquet"))
+        ]
+    )
+
+    parquet_df = spark.read.parquet(*parquet_files).select(*columns)
+    return parquet_df
