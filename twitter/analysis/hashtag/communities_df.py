@@ -1,5 +1,6 @@
 import os, yerbamate
 import tqdm
+import numpy as np
 import pandas as pd
 import igraph as ig
 from collections import defaultdict
@@ -53,42 +54,36 @@ hashtag_to_users = df.groupby("hashtag")["user_id"].apply(list).to_dict()
 # print("Computing edges...")
 
 
-# g.es["weight"] = 0
-
-# for users in hashtag_to_users.values():
-#     if len(users) > 1:
-#         for pair in combinations(users, 2):
-#             # Create an edge identifier (smaller_id, larger_id)
-#             edge_id = (min(pair[0], pair[1]), max(pair[0], pair[1]))
-#             if g.are_connected(*edge_id):
-#                 # If the edge exists, increase its weight by 1
-#                 edge_index = g.get_eid(*edge_id)
-#                 g.es[edge_index]["weight"] += 1
-#             else:
-#                 # If the edge does not exist, create it and set the weight to 1
-#                 g.add_edge(*edge_id)
-#                 edge_index = g.get_eid(*edge_id)
-#                 g.es[edge_index]["weight"] = 1
-
-
-# Create a dictionary to hold edge weights.
-edge_weights = defaultdict(int)
+# g.es["weight"] = 0# DataFrame to store the final edges and weights
+edges_df = pd.DataFrame(columns=['source', 'target', 'weight'])
 
 # Iterate over the user lists in the dictionary.
 for users in tqdm.tqdm(hashtag_to_users.values()):
     if len(users) > 1:
-        # Iterate over each pair of users.
-        for pair in combinations(users, 2):
-            # Create an edge identifier (smaller_id, larger_id)
-            edge_id = (min(pair), max(pair))
-            # Increase the weight of this edge in our dictionary.
-            edge_weights[edge_id] += 1
+        # Generate all pairs of users.
+        pairs = pd.DataFrame(list(combinations(users, 2)), 
+                             columns=['source', 'target'])
+        pairs['weight'] = 1
+        # Add to the overall DataFrame and sum up the weights.
+        edges_df = pd.concat([edges_df, pairs])
 
-# Now that we've calculated all the edge weights, we can add the edges to the graph.
-g.add_edges(edge_weights.keys())
+# Ensure the source is always the smaller id and target is the larger id
+# Ensure the source is always the smaller id and target is the larger id
+edges_df[['source', 'target']] = np.sort(edges_df[['source', 'target']].values, axis=1)
 
-# Finally, set the edge weights in the graph.
-g.es["weight"] = list(edge_weights.values())
+# Drop duplicate edges
+
+edges_df = edges_df.drop_duplicates()
+
+# Now sum up the weights for each unique pair
+edges_df = edges_df.groupby(['source', 'target']).sum().reset_index()
+
+# Add the edges to the graph
+g.add_edges(edges_df[['source', 'target']].values)
+
+# Set the edge weights
+g.es["weight"] = edges_df['weight'].values
+
 
 print("Created Edgess, adding to graph...")
 
