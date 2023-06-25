@@ -1,2 +1,2 @@
-ipdb>=0.13.13
 -e git+ssh://git@github.com/ilex-paraguariensis/yerbamate.git@b53e93b46537e7de75c8c8cd42f142cfabbaf96b#egg=yerbamate
+ipdb>=0.13.13
