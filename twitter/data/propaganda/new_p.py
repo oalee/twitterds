@@ -31,6 +31,35 @@ comprehensive_labels = [
 # concatenate all comprehensive labels
 comprehensive_labels = [label for labels in comprehensive_labels for label in labels]
 
+def find_item_by_id(id):
+    # if id has multiple '_', we need to merge, otherwise, just look for the id in all_data
+    id_s = id.split("_")
+    if len(id_s) > 2:
+        # check how many ids are in all_data, format is article id, paragraph id, paragraph id2,...
+
+        data = [
+            d
+            for d in all_data
+            if d["id"] == id_s[0] + "_" + id_s[1] or d["id"] == id_s[0] + "_" + id_s[2]
+        ]
+
+        # could be three paragraph ids
+        if len(id_s) > 4:
+            data = [
+                d
+                for d in all_data
+                if d["id"] == id_s[0] + "_" + id_s[1]
+                or d["id"] == id_s[0] + "_" + id_s[2]
+                or d["id"] == id_s[0] + "_" + id_s[3]
+            ]
+
+        text = "\n".join([d["text"] for d in data])
+
+    else:
+        text = [d["text"] for d in all_data if d["id"] == id][0]
+
+    return text
+
 index = 0
 # find the first index that has new = true
 for i, label in enumerate(labels):
@@ -73,6 +102,9 @@ def find_ritem_by_id(id):
         for d in data:
             labels += d["labels"]
 
+        # remove duplicates
+        labels = list(set(labels))
+
         # concatenate spans
         spans = []
         for d in data:
@@ -95,36 +127,43 @@ for i, label in enumerate(labels):
     id = label["id"]
     # find the data with the same id
     data = [d for d in all_data if d["id"] == id]
+    real_data = find_ritem_by_id(id)
 
-    try:
-        label_data = data[0]
-        # concatenate text, labels, and spans
-        label["data"] = {
-            "text": label_data["text"],
-            "labels": label_data["labels"],
-            "spans": label_data["spans"],
-        }
-    except:
-        # merged ids, the data has two ids
-        id_s = id.split("_")
-        data = [
-            d
-            for d in all_data
-            if d["id"] == id_s[0] + "_" + id_s[1] or d["id"] == id_s[0] + "_" + id_s[2]
-        ]
+    # check if real_data has only one Repitition span in spans then skip 
+    # if len(real_data["spans"]) == 1 and real_data["spans"][0]["technique"] == "Repetition":
+    #     continue
 
-        if len(data) > 0:
-            # concatenate data for merged ids
-            data = sorted(data, key=lambda x: int(x["id"].split("_")[1]))
-            concatenated_text = " ".join([d["text"] for d in data])
-            concatenated_labels = [label for d in data for label in d["labels"]]
-            concatenated_spans = [span for d in data for span in d["spans"]]
+    label["data"] = real_data
 
-            label["data"] = {
-                "text": concatenated_text,
-                "labels": concatenated_labels,
-                "spans": concatenated_spans,
-            }
+    # try:
+    #     label_data = data[0]
+    #     # concatenate text, labels, and spans
+    #     label["data"] = {
+    #         "text": label_data["text"],
+    #         "labels": label_data["labels"],
+    #         "spans": label_data["spans"],
+    #     }
+    # except:
+    #     # merged ids, the data has two ids
+    #     id_s = id.split("_")
+    #     data = [
+    #         d
+    #         for d in all_data
+    #         if d["id"] == id_s[0] + "_" + id_s[1] or d["id"] == id_s[0] + "_" + id_s[2]
+    #     ]
+
+    #     if len(data) > 0:
+    #         # concatenate data for merged ids
+    #         data = sorted(data, key=lambda x: int(x["id"].split("_")[1]))
+    #         concatenated_text = " ".join([d["text"] for d in data])
+    #         concatenated_labels = [label for d in data for label in d["labels"]]
+    #         concatenated_spans = [span for d in data for span in d["spans"]]
+
+    #         label["data"] = {
+    #             "text": concatenated_text,
+    #             "labels": concatenated_labels,
+    #             "spans": concatenated_spans,
+    #         }
 
 
 # do the same for old_labels
@@ -134,35 +173,14 @@ for i, label in enumerate(old_labels):
     # find the data with the same id
     data = [d for d in all_data if d["id"] == id]
 
-    try:
-        label_data = data[0]
-        # concatenate text, labels, and spans
-        label["data"] = {
-            "text": label_data["text"],
-            "labels": label_data["labels"],
-            "spans": label_data["spans"],
-        }
-    except:
-        # merged ids, the data has two ids
-        id_s = id.split("_")
-        data = [
-            d
-            for d in all_data
-            if d["id"] == id_s[0] + "_" + id_s[1] or d["id"] == id_s[0] + "_" + id_s[2]
-        ]
+   
+    real_data = find_ritem_by_id(id)    
 
-        if len(data) > 0:
-            # concatenate data for merged ids
-            data = sorted(data, key=lambda x: int(x["id"].split("_")[1]))
-            concatenated_text = " ".join([d["text"] for d in data])
-            concatenated_labels = [label for d in data for label in d["labels"]]
-            concatenated_spans = [span for d in data for span in d["spans"]]
+    # check if real_data has only one Repitition span in spans then skip
+    # if len(real_data["spans"]) == 1 and real_data["spans"][0]["technique"] == "Repetition":
+    #     continue
 
-            label["data"] = {
-                "text": concatenated_text,
-                "labels": concatenated_labels,
-                "spans": concatenated_spans,
-            }
+    label["data"] = real_data
 
 # now we need to make instruction-set for training
 
@@ -272,7 +290,7 @@ for i, label in enumerate(old_labels):
 
 
 # for ids not in labels, only add labels
-for i, item in enumerate(data):
+for i, item in enumerate(all_data):
     text = item["text"]
 
     input = text
@@ -301,34 +319,7 @@ for i, item in enumerate(data):
     )
 
 
-def find_item_by_id(id):
-    # if id has multiple '_', we need to merge, otherwise, just look for the id in all_data
-    id_s = id.split("_")
-    if len(id_s) > 2:
-        # check how many ids are in all_data, format is article id, paragraph id, paragraph id2,...
 
-        data = [
-            d
-            for d in all_data
-            if d["id"] == id_s[0] + "_" + id_s[1] or d["id"] == id_s[0] + "_" + id_s[2]
-        ]
-
-        # could be three paragraph ids
-        if len(id_s) > 4:
-            data = [
-                d
-                for d in all_data
-                if d["id"] == id_s[0] + "_" + id_s[1]
-                or d["id"] == id_s[0] + "_" + id_s[2]
-                or d["id"] == id_s[0] + "_" + id_s[3]
-            ]
-
-        text = "\n".join([d["text"] for d in data])
-
-    else:
-        text = [d["text"] for d in all_data if d["id"] == id][0]
-
-    return text
 
 
 for item in comprehensive_labels:

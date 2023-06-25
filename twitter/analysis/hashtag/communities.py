@@ -82,13 +82,13 @@ for users in tqdm.tqdm(hashtag_to_users.values()):
             # Create an edge identifier (smaller_id, larger_id)
             edge_id = (min(pair), max(pair))
             # Increase the weight of this edge in our dictionary.
-            edge_weights[edge_id] += 1
+            edge_weights[edge_id] = 1
 
 # Now that we've calculated all the edge weights, we can add the edges to the graph.
 g.add_edges(edge_weights.keys())
 
 # Finally, set the edge weights in the graph.
-g.es["weight"] = list(edge_weights.values())
+# g.es["weight"] = list(edge_weights.values())
 
 print("Created Edgess, adding to graph...")
 

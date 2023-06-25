@@ -1,4 +1,5 @@
 import os, yerbamate
+import threading
 import tqdm
 import numpy as np
 import pandas as pd
@@ -15,7 +16,7 @@ df = pd.read_parquet(path)
 print("Filtering DataFrame...")
 
 hashtag_counts = df.groupby("hashtag").size().reset_index(name="counts")
-top_hashtags = hashtag_counts.sort_values("counts", ascending=False).head(2000)
+top_hashtags = hashtag_counts.sort_values("counts", ascending=False).head(1000)
 # create a set of the top hashtags for faster lookup
 top_hashtags_set = set(top_hashtags["hashtag"])
 
@@ -55,34 +56,49 @@ hashtag_to_users = df.groupby("hashtag")["user_id"].apply(list).to_dict()
 
 
 # g.es["weight"] = 0# DataFrame to store the final edges and weights
-edges_df = pd.DataFrame(columns=['source', 'target', 'weight'])
+edges_df = pd.DataFrame(columns=["source", "target", "weight"])
+
+if os.path.exists(os.path.join(env["plots"], "analysis", "edges.csv")):
+    edges_df = pd.read_csv(os.path.join(env["plots"], "analysis", "edges.csv"))
+
+# saved_edge_df = pd.read_csv(os.path.join(env["plots"], "analysis", "edges.csv")) if os.path.exists( os.path.join(env["plots"], "analysis", "edges.csv")) else 
+
+
+def save_edges(edges_df):
+    edges_df.to_csv(os.path.join(env["plots"], "analysis", "edges.csv"), index=False)
+
 
 # Iterate over the user lists in the dictionary.
-for users in tqdm.tqdm(hashtag_to_users.values()):
+for i, users in enumerate(tqdm.tqdm(hashtag_to_users.values())):
     if len(users) > 1:
         # Generate all pairs of users.
-        pairs = pd.DataFrame(list(combinations(users, 2)), 
-                             columns=['source', 'target'])
-        pairs['weight'] = 1
+        pairs = pd.DataFrame(list(combinations(users, 2)), columns=["source", "target"])
+        pairs["weight"] = 1
         # Add to the overall DataFrame and sum up the weights.
         edges_df = pd.concat([edges_df, pairs])
 
+        # on a thread, save the edges_df to a csv file
+        # every 10 iterations
+        th = threading.Thread(target=save_edges, args=(edges_df,))
+        th.start()
+
+
 # Ensure the source is always the smaller id and target is the larger id
 # Ensure the source is always the smaller id and target is the larger id
-edges_df[['source', 'target']] = np.sort(edges_df[['source', 'target']].values, axis=1)
+edges_df[["source", "target"]] = np.sort(edges_df[["source", "target"]].values, axis=1)
 
 # Drop duplicate edges
 
 edges_df = edges_df.drop_duplicates()
 
 # Now sum up the weights for each unique pair
-edges_df = edges_df.groupby(['source', 'target']).sum().reset_index()
+edges_df = edges_df.groupby(["source", "target"]).sum().reset_index()
 
 # Add the edges to the graph
-g.add_edges(edges_df[['source', 'target']].values)
+g.add_edges(edges_df[["source", "target"]].values)
 
 # Set the edge weights
-g.es["weight"] = edges_df['weight'].values
+g.es["weight"] = edges_df["weight"].values
 
 
 print("Created Edgess, adding to graph...")
