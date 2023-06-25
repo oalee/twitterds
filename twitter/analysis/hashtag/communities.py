@@ -72,17 +72,41 @@ hashtag_to_users = df.groupby("hashtag")["user_id"].apply(list).to_dict()
 
 
 # Create a dictionary to hold edge weights.
-edge_weights = defaultdict(int)
+edge_weights = defaultdict(bool)
+
+# save edge temporarily path
+edge_pickle_path = os.path.join(env["plots"], "analysis", "user_hashtag_edges.pickle")
+
+
+# if the file exists, load it
+if os.path.exists(edge_pickle_path):
+    print("Loading edge weights from file...")
+    with open(edge_pickle_path, "rb") as f:
+        pp = pickle.load(f)
+        edge_weights = pp["edge_weights"]
+        start_i = pp["index"]
+
+else:
+    start_i = 0
+
 
 # Iterate over the user lists in the dictionary.
-for users in tqdm.tqdm(hashtag_to_users.values()):
+for i, users in enumerate(tqdm.tqdm(hashtag_to_users.values())):
+    if i < start_i:
+        continue
     if len(users) > 1:
         # Iterate over each pair of users.
         for pair in combinations(users, 2):
             # Create an edge identifier (smaller_id, larger_id)
             edge_id = (min(pair), max(pair))
             # Increase the weight of this edge in our dictionary.
-            edge_weights[edge_id] = 1
+            edge_weights[edge_id] = True
+
+    # save every 10 iterations
+    if i % 10 == 0:
+        print("Saving edge weights to file...")
+        with open(edge_pickle_path, "wb") as f:
+            pickle.dump({"edge_weights": edge_weights, "index": i}, f)
 
 # Now that we've calculated all the edge weights, we can add the edges to the graph.
 g.add_edges(edge_weights.keys())
