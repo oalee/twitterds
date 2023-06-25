@@ -1,5 +1,7 @@
-igraph>=0.10.4
-wordcloud>=1.9.2
-leidenalg>=0.9.1
 pyvis>=0.3.2
+wordcloud>=1.9.2
 networkx>=3.1
+leidenalg>=0.9.1
+igraph>=0.10.4
+pandas>=1.5.3
+-e git+ssh://git@github.com/ilex-paraguariensis/yerbamate.git@b53e93b46537e7de75c8c8cd42f142cfabbaf96b#egg=yerbamate
