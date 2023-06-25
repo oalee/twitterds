@@ -49,25 +49,45 @@ print("Computing edges...")
 # create a dictionary where keys are hashtags and values are lists of users that used this hashtag
 hashtag_to_users = df.groupby("hashtag")["user_id"].apply(list).to_dict()
 
-print("Computing edges...")
+# print("Computing edges...")
 
 
-g.es["weight"] = 0
+# g.es["weight"] = 0
 
+# for users in hashtag_to_users.values():
+#     if len(users) > 1:
+#         for pair in combinations(users, 2):
+#             # Create an edge identifier (smaller_id, larger_id)
+#             edge_id = (min(pair[0], pair[1]), max(pair[0], pair[1]))
+#             if g.are_connected(*edge_id):
+#                 # If the edge exists, increase its weight by 1
+#                 edge_index = g.get_eid(*edge_id)
+#                 g.es[edge_index]["weight"] += 1
+#             else:
+#                 # If the edge does not exist, create it and set the weight to 1
+#                 g.add_edge(*edge_id)
+#                 edge_index = g.get_eid(*edge_id)
+#                 g.es[edge_index]["weight"] = 1
+
+
+# Create a dictionary to hold edge weights.
+edge_weights = defaultdict(int)
+
+# Iterate over the user lists in the dictionary.
 for users in hashtag_to_users.values():
     if len(users) > 1:
+        # Iterate over each pair of users.
         for pair in combinations(users, 2):
             # Create an edge identifier (smaller_id, larger_id)
-            edge_id = (min(pair[0], pair[1]), max(pair[0], pair[1]))
-            if g.are_connected(*edge_id):
-                # If the edge exists, increase its weight by 1
-                edge_index = g.get_eid(*edge_id)
-                g.es[edge_index]["weight"] += 1
-            else:
-                # If the edge does not exist, create it and set the weight to 1
-                g.add_edge(*edge_id)
-                edge_index = g.get_eid(*edge_id)
-                g.es[edge_index]["weight"] = 1
+            edge_id = (min(pair), max(pair))
+            # Increase the weight of this edge in our dictionary.
+            edge_weights[edge_id] += 1
+
+# Now that we've calculated all the edge weights, we can add the edges to the graph.
+g.add_edges(edge_weights.keys())
+
+# Finally, set the edge weights in the graph.
+g.es["weight"] = list(edge_weights.values())
 
 print("Created Edgess, adding to graph...")
 
