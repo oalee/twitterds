@@ -63,6 +63,10 @@ edges_df = pd.DataFrame(columns=["source", "target", "hashtag"])
 
 if os.path.exists(os.path.join(env["plots"], "analysis", "edges.parquet")):
     edges_df = pd.read_parquet(os.path.join(env["plots"], "analysis", "edges.parquet"))
+    # reset index
+    # edges_df.reset_index(drop=True, inplace=True)
+
+    
 
 
 allready_calculated_hashtags = set(edges_df["hashtag"].unique())
@@ -93,7 +97,11 @@ for i, (hashtag, users) in enumerate(tqdm.tqdm(hashtag_to_users.items())):
                 os.path.join(env["plots"], "analysis", "edges.parquet"),
                 index=False,
                 engine="fastparquet",
-                append=True,
+                append=True
+                if os.path.exists(
+                    os.path.join(env["plots"], "analysis", "edges.parquet")
+                )
+                else False,
             )
             edges_df = pd.DataFrame(columns=["source", "target", "hashtag"])
 

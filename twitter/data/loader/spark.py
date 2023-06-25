@@ -24,7 +24,12 @@ spark = (
 )
 
 
-def get_tweets_session(columns):
+def get_tweets_session(columns, *args, **kwargs):
+    if type(columns) != list:
+        columns = [columns]
+        if len(args) > 0:
+            columns.extend(args)
+
     parquet_files = os.listdir(users_path)
     parquet_files = [
         os.path.join(users_path, f, "tweets.parquet")
