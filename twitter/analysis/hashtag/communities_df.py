@@ -65,7 +65,11 @@ if os.path.exists(os.path.join(env["plots"], "analysis", "edges.csv")):
 
 
 def save_edges(edges_df):
-    edges_df.to_csv(os.path.join(env["plots"], "analysis", "edges.csv"), index=False)
+    
+    # append to existing file with fastparquet
+    import fastparquet
+    fastparquet.write(os.path.join(env["plots"], "analysis", "edges.parquet"), edges_df, append=True)
+    # edges_df.to_csv(os.path.join(env["plots"], "analysis", "edges.csv"), index=False, mode="a", header=False)
 
 
 # Iterate over the user lists in the dictionary.
@@ -73,17 +77,20 @@ for i, users in enumerate(tqdm.tqdm(hashtag_to_users.values())):
     if len(users) > 1:
         # Generate all pairs of users.
         pairs = pd.DataFrame(list(combinations(users, 2)), columns=["source", "target"])
-        pairs["weight"] = 1
+        pairs["hashtag"] =  hashtag_to_users.keys()[i]
         # Add to the overall DataFrame and sum up the weights.
         edges_df = pd.concat([edges_df, pairs])
 
         # on a thread, save the edges_df to a csv file
         # every 10 iterations
-        th = threading.Thread(target=save_edges, args=(edges_df,))
-        th.start()
+        if i % 10 == 0:
+            save_edges(edges_df)
+            # clean cache by deleting the edges_df
+            edges_df = pd.DataFrame(columns=["source", "target", "weight"])
 
 
-# Ensure the source is always the smaller id and target is the larger id
+
+
 # Ensure the source is always the smaller id and target is the larger id
 edges_df[["source", "target"]] = np.sort(edges_df[["source", "target"]].values, axis=1)
 
