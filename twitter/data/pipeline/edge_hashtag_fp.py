@@ -7,19 +7,34 @@ import igraph as ig
 from collections import defaultdict
 from itertools import combinations, chain
 
-import fastparquet as fp
+
+import gc
 
 
 env = yerbamate.Environment()
 
+print("Loading DataFrame...")
 path = os.path.join(env["plots"], "analysis", "user_hashtag.parquet")
+
+tweet_dist_path = os.path.join(env["save"], "users", "tweets_distribution")
 
 df = pd.read_parquet(path)
 
+tweet_dist_df = pd.read_parquet(tweet_dist_path)
+
 print("Filtering DataFrame...")
 
+# filter out users that have less than 500 tweets (inactive users)
+inactive_users = set(tweet_dist_df[tweet_dist_df["count"] < 500]["userId"])
+
+# filter out inactive users
+df = df[~df["userId"].isin(inactive_users)]
+
+
 hashtag_counts = df.groupby("hashtag").size().reset_index(name="counts")
-top_hashtags = hashtag_counts.sort_values("counts", ascending=False).head(1000)
+top_hashtags = hashtag_counts.sort_values("counts", ascending=False)  # .head(1000)
+# exlude top 5 hashtags
+top_hashtags = top_hashtags.iloc[5:1005]
 # create a set of the top hashtags for faster lookup
 top_hashtags_set = set(top_hashtags["hashtag"])
 
@@ -66,8 +81,6 @@ if os.path.exists(os.path.join(env["plots"], "analysis", "edges.parquet")):
     # reset index
     # edges_df.reset_index(drop=True, inplace=True)
 
-    
-
 
 allready_calculated_hashtags = set(edges_df["hashtag"].unique())
 
@@ -80,30 +93,25 @@ for i, (hashtag, users) in enumerate(tqdm.tqdm(hashtag_to_users.items())):
     if len(users) > 1:
         # Generate all pairs of users.
         # df = pd.DataFrame(columns=["source", "target", "hashtag"])
+        pairs = combinations(users, 2)
+        # pairs_list = [(min(pair), max(pair)) for pair in pairs]
 
-        pairs_list = [
-            (min(pair[0], pair[1]), max(pair[0], pair[1]), hashtag)
-            for pair in combinations(users, 2)
-        ]
-
-        df = pd.DataFrame(pairs_list, columns=["source", "target", "hashtag"])
-
+        df = pd.DataFrame(pairs, columns=["source", "target"])
+        df['hashtag'] = hashtag
         edges_df = pd.concat([edges_df, df])
         # on a thread, save the edges_df to a csv file
         # every 10 iterations
-        if i % 10 == 0 and i != 0:
-            # edges_df.to_parquet(os.path.join(env["plots"], "analysis", "edges.parquet"))
-            edges_df.to_parquet(
-                os.path.join(env["plots"], "analysis", "edges.parquet"),
-                index=False,
-                engine="fastparquet",
-                append=True
-                if os.path.exists(
-                    os.path.join(env["plots"], "analysis", "edges.parquet")
-                )
-                else False,
-            )
-            edges_df = pd.DataFrame(columns=["source", "target", "hashtag"])
+        edges_df.to_parquet(
+            os.path.join(env["plots"], "analysis", "edges.parquet"),
+            index=False,
+            engine="fastparquet",
+            append=True
+            if os.path.exists(os.path.join(env["plots"], "analysis", "edges.parquet"))
+            else False,
+        )
+        del edges_df
+        gc.collect()
+        edges_df = pd.DataFrame(columns=["source", "target", "hashtag"])
 
 
 edges_df.to_parquet(os.path.join(env["plots"], "analysis", "edges.parquet"))
