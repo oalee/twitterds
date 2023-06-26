@@ -1,8 +1,8 @@
-ipdb>=0.13.13
-pandas>=1.5.3
-tqdm>=4.65.0
 fastparquet>=2023.2.0
 pyarrow>=9.0.0
--e git+ssh://git@github.com/ilex-paraguariensis/yerbamate.git@b53e93b46537e7de75c8c8cd42f142cfabbaf96b#egg=yerbamate
-vaex>=4.16.0
+ipdb>=0.13.13
 numpy>=1.24.3
+vaex>=4.16.0
+pandas>=1.5.3
+tqdm>=4.65.0
+-e git+https://git@github.com/ilex-paraguariensis/yerbamate.git@ad93170638d73c29d04b7d3d2d0c1c77832ee02f#egg=yerbamate

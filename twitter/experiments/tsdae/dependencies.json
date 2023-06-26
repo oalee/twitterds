@@ -1,7 +1,7 @@
 {
     "dependencies": [
-        "https://github.com/oalee/twitterds/tree/main/twitter/data/loader",
-        "https://github.com/oalee/twitterds/tree/main/twitter/trainers/logger"
+        "https://github.com/oalee/twitterds/tree/main/twitter/trainers/logger",
+        "https://github.com/oalee/twitterds/tree/main/twitter/data/loader"
     ],
     "env": {}
 }

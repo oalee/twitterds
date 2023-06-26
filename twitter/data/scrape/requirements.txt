@@ -1,4 +1,4 @@
--e git+ssh://git@github.com/ilex-paraguariensis/yerbamate.git@b53e93b46537e7de75c8c8cd42f142cfabbaf96b#egg=yerbamate
 -e git+https://github.com/JustAnotherArchivist/snscrape.git@614d4c2029a62d348ca56598f87c425966aaec66#egg=snscrape
-ipdb>=0.13.13
 pandas>=1.5.3
+-e git+https://git@github.com/ilex-paraguariensis/yerbamate.git@ad93170638d73c29d04b7d3d2d0c1c77832ee02f#egg=yerbamate
+ipdb>=0.13.13

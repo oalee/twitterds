@@ -1,1 +1,1 @@
-
+-e git+https://git@github.com/ilex-paraguariensis/yerbamate.git@ad93170638d73c29d04b7d3d2d0c1c77832ee02f#egg=yerbamate
