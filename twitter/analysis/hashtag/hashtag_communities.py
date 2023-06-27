@@ -2,29 +2,39 @@
 import pandas as pd, os, yerbamate, ipdb
 import igraph as ig
 import yerbamate
+import vaex  
 
 env = yerbamate.Environment()
 
-edge_path = os.path.join(env["plots"], "analysis", "edges.parquet")
+period = "before"
+
+edge_path = os.path.join(env["plots"], "analysis", f"edges_{period}_cleaned.parquet")
 
 df = pd.read_parquet(edge_path)
 
 print(df.shape)
 
 
-# data fram edges hash hashtag src tgt, we need to unordered it to small to big, then grouby src tgt to get weight
-df = df.sort_values(by=["hashtag", "source", "target"], ascending=True)
+df.rename(columns={"hashtag": "weight"}, inplace=True)
+df = df[df["weight"] > 3]
 
+print(df.shape)
 
-import numpy as np
+# map node ids to start from 0
+# node mapping is for both node_1 and node_2
 
-# Create two new columns 'node1' and 'node2', which are 'source' and 'target' sorted
-df[['node1', 'node2']] = pd.DataFrame(np.sort(df[['source', 'target']], axis=1))
+all_nodes = set(df['source'].unique()).union(set(df['target'].unique()))
 
-# Group by 'node1' and 'node2' and sum the weights for each pair
-df_final = df.groupby(['node1', 'node2'])['weight'].sum().reset_index()
+node_mapping = {node: i for i, node in enumerate(all_nodes)}
+node_reverse_mapping = {i: node for i, node in enumerate(all_nodes)}
 
 import igraph as ig
+
+df_final = df.copy()
+
+# we need to map the node ids to start from 0
+df_final['source'] = df_final['source'].map(node_mapping)
+df_final['target'] = df_final['target'].map(node_mapping)
 
 # Create a graph from the dataframe
 g = ig.Graph.TupleList(df_final.itertuples(index=False), directed=False, weights=True)
@@ -46,21 +56,15 @@ print("Number of communities: ", len(partition))
 g.vs["partition"] = partition.membership
 
 
-# save graph to file
+path = os.path.join(env["plots"], "analysis", f"user_hashtag_{period}.parquet")
 
-save_path = os.path.join(env["plots"], "analysis", "users_hashtag_graph.graphml")
-g.write(save_path, format="graphml")
+df_hashtags = pd.read_parquet(path)
+ 
+    
+# now add node id to user_hashtag dataframe
+df_hashtags["node_id"] = df_hashtags["userId"].map(node_mapping).astype(int)
 
+# add partition to user_hashtag dataframe
 
-path = os.path.join(env["plots"], "analysis", "user_hashtag_before.parquet")
+df_hashtags = df_hashtags.dropna(subset=["partition"])
 
-df = pd.read_parquet(path)
- # Create a set of unique user IDs from the edge list dataframe
-users = set(df_final['node1']).union(set(df_final['node2']))
-
-# Create a mapping from user IDs to igraph node indices and vice versa
-user_to_index = {user: index for index, user in enumerate(users)}
-index_to_user = {index: user for index, user in enumerate(users)}
-
-# Add the partition to the user dataframe
-df['partition'] = [partition.membership[user_to_index[user]] for user in df['userId']]
