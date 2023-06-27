@@ -12,9 +12,21 @@ env = yerbamate.Environment()
 path = os.path.join(env["plots"], "analysis", "user_hashtag.parquet")
 
 df = pd.read_parquet(path)
+tweet_dist_path = os.path.join(env["save"], "users", "tweets_distribution")
 
 print("Filtering DataFrame...")
 
+df = pd.read_parquet(path)
+
+tweet_dist_df = pd.read_parquet(tweet_dist_path)
+
+print("Filtering DataFrame...")
+
+# filter out users that have less than 500 tweets (inactive users)
+inactive_users = set(tweet_dist_df[tweet_dist_df["count"] < 500]["userId"])
+
+# filter out inactive users
+df = df[~df["userId"].isin(inactive_users)]
 hashtag_counts = df.groupby("hashtag").size().reset_index(name="counts")
 top_hashtags = hashtag_counts.sort_values("counts", ascending=False).head(1000)
 # create a set of the top hashtags for faster lookup

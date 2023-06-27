@@ -6,7 +6,7 @@ import pandas as pd
 import igraph as ig
 from collections import defaultdict
 from itertools import combinations, chain
-
+from ..loader.spark import get_tweets_session
 
 import gc
 
@@ -14,7 +14,7 @@ import gc
 env = yerbamate.Environment()
 
 print("Loading DataFrame...")
-path = os.path.join(env["plots"], "analysis", "user_hashtag_before.parquet")
+path = os.path.join(env["plots"], "analysis", "user_hashtag.parquet")
 
 tweet_dist_path = os.path.join(env["save"], "users", "tweets_distribution")
 
@@ -34,7 +34,7 @@ df = df[~df["userId"].isin(inactive_users)]
 hashtag_counts = df.groupby("hashtag").size().reset_index(name="counts")
 top_hashtags = hashtag_counts.sort_values("counts", ascending=False)  # .head(1000)
 # exlude top 5 hashtags
-top_hashtags = top_hashtags.iloc[:1000]
+top_hashtags = top_hashtags.iloc[5:1005]
 # create a set of the top hashtags for faster lookup
 top_hashtags_set = set(top_hashtags["hashtag"])
 
@@ -76,10 +76,8 @@ hashtag_to_users = df.groupby("hashtag")["user_id"].apply(list).to_dict()
 # g.es["weight"] = 0# DataFrame to store the final edges and weights
 edges_df = pd.DataFrame(columns=["source", "target", "hashtag"])
 
-edges_path = os.path.join(env["plots"], "analysis", "edges.parquet")
-
-if os.path.exists(edges_path):
-    edges_df = pd.read_parquet(edges_path)
+if os.path.exists(os.path.join(env["plots"], "analysis", "edges.parquet")):
+    edges_df = pd.read_parquet(os.path.join(env["plots"], "analysis", "edges.parquet"))
     # reset index
     # edges_df.reset_index(drop=True, inplace=True)
 
@@ -104,11 +102,11 @@ for i, (hashtag, users) in enumerate(tqdm.tqdm(hashtag_to_users.items())):
         # on a thread, save the edges_df to a csv file
         # every 10 iterations
         edges_df.to_parquet(
-            edges_path,
+            os.path.join(env["plots"], "analysis", "edges.parquet"),
             index=False,
             engine="fastparquet",
             append=True
-            if os.path.exists(edges_path)
+            if os.path.exists(os.path.join(env["plots"], "analysis", "edges.parquet"))
             else False,
         )
         del edges_df
@@ -116,4 +114,4 @@ for i, (hashtag, users) in enumerate(tqdm.tqdm(hashtag_to_users.items())):
         edges_df = pd.DataFrame(columns=["source", "target", "hashtag"])
 
 
-# edges_df.to_parquet(edges_path)
+edges_df.to_parquet(os.path.join(env["plots"], "analysis", "edges.parquet"))

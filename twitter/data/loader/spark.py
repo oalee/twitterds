@@ -12,10 +12,10 @@ users_path = os.path.join(env["data"], "users")
 spark = (
     SparkSession.builder.appName("Twitter Data Analysis")
     .config(
-        "spark.driver.memory", "48g"
+        "spark.driver.memory", "38g"
     )  # Memory for driver (where SparkContext is initiated)
     .config("spark.driver.extraJavaOptions", "-XX:+UseG1GC")
-    .config("spark.executor.memory", "52g")  # Memory for executor (where tasks are run)
+    .config("spark.executor.memory", "42g")  # Memory for executor (where tasks are run)
     .config("spark.executor.extraJavaOptions", "-XX:+UseG1GC")
     .config("spark.sql.hive.filesourcePartitionFileCacheSize", 2024 * 1024 * 1024)
     .config("spark.driver.maxResultSize", 8048 * 1024 * 1024)
@@ -67,9 +67,9 @@ def get_active_tweets_session(columns, *args, **kwargs):
 
     parquet_df = spark.read.parquet(*parquet_files).select(*columns)
  
-    # filter by active users
-
+    # filter by active users, which are the ones that are not in the inactive_df
     parquet_df = parquet_df.join(inactive_df, on="userId", how="left_anti")
+    
 
 
     return parquet_df
