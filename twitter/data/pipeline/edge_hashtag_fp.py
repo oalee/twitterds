@@ -13,8 +13,10 @@ import gc
 
 env = yerbamate.Environment()
 
+period = env.action if env.action != None else "before"
+
 print("Loading DataFrame...")
-path = os.path.join(env["plots"], "analysis", "user_hashtag_before.parquet")
+path = os.path.join(env["plots"], "analysis", f"user_hashtag_{period}.parquet")
 
 tweet_dist_path = os.path.join(env["save"], "users", "tweets_distribution")
 
@@ -68,7 +70,7 @@ df["user_id"] = df["userId"].map(user_mapping)
 print("Computing edges...")
 
 # create a dictionary where keys are hashtags and values are lists of users that used this hashtag
-hashtag_to_users = df.groupby("hashtag")["user_id"].apply(list).to_dict()
+hashtag_to_users = df.groupby("hashtag")["userId"].apply(list).to_dict()
 
 # print("Computing edges...")
 
@@ -76,7 +78,7 @@ hashtag_to_users = df.groupby("hashtag")["user_id"].apply(list).to_dict()
 # g.es["weight"] = 0# DataFrame to store the final edges and weights
 edges_df = pd.DataFrame(columns=["source", "target", "hashtag"])
 
-edges_path = os.path.join(env["plots"], "analysis", "edges.parquet")
+edges_path = os.path.join(env["plots"], "analysis", f"edges_{period}.parquet")
 
 if os.path.exists(edges_path):
     edges_df = pd.read_parquet(edges_path)

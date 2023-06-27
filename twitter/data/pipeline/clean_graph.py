@@ -1,6 +1,4 @@
-import os, yerbamate
-
-env = yerbamate.Environment()
+ 
 
 
 import pandas as pd, os, yerbamate, ipdb
@@ -9,33 +7,32 @@ import yerbamate
 
 env = yerbamate.Environment()
 
+period = env.action if env.action != None else "before"
 
-path = os.path.join(env["plots"], "analysis", "user_hashtag.parquet")
-
-df = pd.read_parquet(path)
-
-user_mapping = {user: i for i, user in enumerate(df["userId"].unique())}
-
-index_to_user = {i: user for user, i in user_mapping.items()}
+edges_path = os.path.join(env["plots"], "analysis", f"edges_{period}.parquet")
 
 
+df = pd.read_parquet(edges_path)
+
+# Sort DataFrame
+df = df.sort_values(['source', 'target'])
+
+# Group by 'source' and 'target', and then count unique 'hashtags'
+df_grouped = df.groupby(['source', 'target']).agg({'hashtag': 'nunique'})
 
 
-edge_path = os.path.join(env["plots"], "analysis", "edges.parquet")
-
-df = pd.read_parquet(edge_path)
-
-print(df.shape)
+# Reset index to have 'source' and 'target' as columns again
+df_grouped = df_grouped.reset_index()
 
 
-# data fram edges hash hashtag src tgt, we need to unordered it to small to big, then grouby src tgt to get weight
-df = df.sort_values(by=["hashtag", "source", "target"], ascending=True)
+# drop hashtag count 1 and duplicates
+
+df_grouped = df_grouped[df_grouped['hashtag'] > 1]
+
+df_grouped = df_grouped.drop_duplicates(['source', 'target'])
+
+# save to parquet
+save_path = os.path.join(env['plots'], 'analysis', f'edges_{period}_cleaned.parquet')
 
 
-import numpy as np
-
-# Create two new columns 'node1' and 'node2', which are 'source' and 'target' sorted
-df[['node1', 'node2']] = pd.DataFrame(np.sort(df[['source', 'target']], axis=1))
-
-# Group by 'node1' and 'node2' and sum the weights for each pair
-df_final = df.groupby(['node1', 'node2'])['weight'].sum().reset_index()
+df_grouped.to_parquet(save_path)
