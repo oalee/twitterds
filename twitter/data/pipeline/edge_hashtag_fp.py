@@ -27,7 +27,7 @@ tweet_dist_df = pd.read_parquet(tweet_dist_path)
 print("Filtering DataFrame...")
 
 # filter out users that have less than 500 tweets (inactive users)
-inactive_users = set(tweet_dist_df[tweet_dist_df["count"] < 500]["userId"])
+inactive_users = set(tweet_dist_df[tweet_dist_df["count"] < 100]["userId"])
 
 # filter out inactive users
 df = df[~df["userId"].isin(inactive_users)]
@@ -36,7 +36,7 @@ df = df[~df["userId"].isin(inactive_users)]
 hashtag_counts = df.groupby("hashtag").size().reset_index(name="counts")
 top_hashtags = hashtag_counts.sort_values("counts", ascending=False)  # .head(1000)
 # exlude top 5 hashtags
-top_hashtags = top_hashtags.iloc[:1000]
+top_hashtags = top_hashtags.iloc[:2000]
 # create a set of the top hashtags for faster lookup
 top_hashtags_set = set(top_hashtags["hashtag"])
 
@@ -81,7 +81,11 @@ edges_df = pd.DataFrame(columns=["source", "target", "hashtag"])
 edges_path = os.path.join(env["plots"], "analysis", f"edges_{period}.parquet")
 
 if os.path.exists(edges_path):
-    edges_df = pd.read_parquet(edges_path)
+    print("Already exists!, delete? (y/n)")
+    if input() == "y":
+        os.remove(edges_path)
+    else:
+       edges_df = pd.read_parquet(edges_path)
     # reset index
     # edges_df.reset_index(drop=True, inplace=True)
 
